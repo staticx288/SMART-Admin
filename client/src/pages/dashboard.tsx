@@ -34,11 +34,11 @@ export default function Dashboard() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 px-6 py-4">
+      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-slate-900">Deployment Dashboard</h2>
-            <p className="text-slate-600">Monitor and manage your PulseBusiness module deployments</p>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Deployment Dashboard</h2>
+            <p className="text-slate-600 dark:text-slate-400">Monitor and manage your PulseBusiness module deployments</p>
           </div>
           <div className="flex items-center space-x-4">
             {/* Status Indicator */}
