@@ -1,0 +1,38 @@
+{
+  "domainId": "DOM-79168",
+  "name": "Test Domain",
+  "description": "",
+  "selectedModules": [
+    "mod_1760712111619_6rvivmafa",
+    "mod_1760712111706_033sewobu"
+  ],
+  "moduleInstances": [
+    {
+      "id": "mod_1760712111619_6rvivmafa",
+      "name": "smart_compliance",
+      "moduleClassification": "Node",
+      "categoryClassification": "Compliance & Audit",
+      "moduleSmartId": "MOD-38348",
+      "domainSmartId": "COMPLIANCE-DOM-79168"
+    },
+    {
+      "id": "mod_1760712111706_033sewobu",
+      "name": "smart_projects",
+      "moduleClassification": "Hub",
+      "categoryClassification": "General",
+      "moduleSmartId": "MOD-89703",
+      "domainSmartId": "PROJECTS-DOM-79168"
+    }
+  ],
+  "deploymentTargets": [
+    "1760712145616"
+  ],
+  "generatedInstances": {},
+  "configuration": {},
+  "createdAt": "2025-10-20T11:05:19.822Z",
+  "status": "deployed",
+  "ecosystemSmartID": "TEST-DOMAIN-DOM-79168",
+  "deploymentMethod": "sd_card",
+  "deployedAt": "2025-10-20T11:50:53.358Z",
+  "updatedAt": "2025-10-20T11:50:53.358Z"
+}

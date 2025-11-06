@@ -1,0 +1,101 @@
+[
+  {
+    "sessionId": "bf6c15b9d7c760e916702d51d16977a2065945d0a06f3652a698a6d5c1600272",
+    "userId": "usr_admin_1760619255885",
+    "username": "admin",
+    "role": "admin",
+    "createdAt": "2025-10-16T12:58:09.125Z",
+    "expiresAt": "2025-10-17T12:58:09.125Z",
+    "ipAddress": "127.0.0.1"
+  },
+  {
+    "sessionId": "5ae77ef1ca748c5e2643aba1041af59a3e9f0a962e14cccb4b520ec2f975de90",
+    "userId": "usr_admin_1760619255885",
+    "username": "admin",
+    "role": "admin",
+    "createdAt": "2025-10-16T12:58:25.155Z",
+    "expiresAt": "2025-10-17T12:58:25.155Z",
+    "ipAddress": "127.0.0.1"
+  },
+  {
+    "sessionId": "2269c393d39b0c25619a145ed4ab8fdf340ed2ef4eea09b03e92503d56b53cec",
+    "userId": "usr_admin_1760619255885",
+    "username": "admin",
+    "role": "admin",
+    "createdAt": "2025-10-16T14:35:17.925Z",
+    "expiresAt": "2025-10-17T14:35:17.925Z",
+    "ipAddress": "127.0.0.1"
+  },
+  {
+    "sessionId": "a6dc89087085415376e73abc6a8e131b69afd6d66f4578ad8d13d78bcf03b96c",
+    "userId": "usr_admin_1760619255885",
+    "username": "admin",
+    "role": "admin",
+    "createdAt": "2025-10-16T14:36:38.892Z",
+    "expiresAt": "2025-10-17T14:36:38.892Z",
+    "ipAddress": "127.0.0.1"
+  },
+  {
+    "sessionId": "34d8205026e8c36627168518b913a771be78447a7bb9885d4af4851c56012866",
+    "userId": "usr_admin_1760619255885",
+    "username": "admin",
+    "role": "admin",
+    "createdAt": "2025-10-16T14:36:47.798Z",
+    "expiresAt": "2025-10-17T14:36:47.798Z",
+    "ipAddress": "127.0.0.1"
+  },
+  {
+    "sessionId": "16daf971781c5fba5cf52ddfbf4894a3766d625fa134e57af0cdcaaf6968ee1a",
+    "userId": "usr_admin_1760619255885",
+    "username": "admin",
+    "role": "admin",
+    "createdAt": "2025-10-16T15:25:37.264Z",
+    "expiresAt": "2025-10-17T15:25:37.264Z",
+    "ipAddress": "127.0.0.1"
+  },
+  {
+    "sessionId": "d7e173c7303251932acd49aa2668b4147f93e0967a821604bc65eb8539a2beb8",
+    "userId": "usr_admin_1760619255885",
+    "username": "admin",
+    "role": "admin",
+    "createdAt": "2025-10-16T21:04:33.131Z",
+    "expiresAt": "2025-10-17T21:04:33.131Z",
+    "ipAddress": "127.0.0.1"
+  },
+  {
+    "sessionId": "d437ca890112e155a441fa1366d4b7d14d253acac4c69b3aac2db6c06e0ed618",
+    "userId": "usr_admin_1760619255885",
+    "username": "admin",
+    "role": "admin",
+    "createdAt": "2025-10-18T23:58:17.799Z",
+    "expiresAt": "2025-10-19T23:58:17.799Z",
+    "ipAddress": "127.0.0.1"
+  },
+  {
+    "sessionId": "e4011ef14da81de2be4b14829c6fd46d2f6c42b274bfeefa2403bf2b83a7878f",
+    "userId": "usr_admin_1760619255885",
+    "username": "admin",
+    "role": "admin",
+    "createdAt": "2025-10-19T11:51:52.486Z",
+    "expiresAt": "2025-10-20T11:51:52.486Z",
+    "ipAddress": "127.0.0.1"
+  },
+  {
+    "sessionId": "e87d3b33a7a1cd62e11ec0a4581db5030f750f756ed8c254c6b6f962afcac654",
+    "userId": "usr_admin_1760619255885",
+    "username": "admin",
+    "role": "admin",
+    "createdAt": "2025-10-20T12:04:28.397Z",
+    "expiresAt": "2025-10-21T12:04:28.397Z",
+    "ipAddress": "127.0.0.1"
+  },
+  {
+    "sessionId": "b47ff7f6be2219f4b545b2317b73cc873f91cda0e3b2cf7cd873e818bca1d384",
+    "userId": "usr_admin_1760619255885",
+    "username": "admin",
+    "role": "admin",
+    "createdAt": "2025-10-22T21:15:04.606Z",
+    "expiresAt": "2025-10-23T21:15:04.606Z",
+    "ipAddress": "127.0.0.1"
+  }
+]

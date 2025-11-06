@@ -1,270 +1,664 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
-import { insertNodeSchema, insertModuleSchema, insertDeploymentSchema } from "@shared/schema";
-import { z } from "zod";
+import { SettingsManager } from "./settings";
+import { registerInfrastructureRoutes } from "./infrastructure-express-routes";
+import { setupAuthRoutes } from "./auth-routes";
+import { setupLedgerRoutes } from "./ledger-routes";
+import * as fs from 'fs';
+import * as path from 'path';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
+
+// Helper function to update node status based on last seen
+export function updateNodeStatuses(nodes: any[]): any[] {
+  const now = new Date();
+  const offlineThreshold = 90000; // 90 seconds - allow for 30s broadcast + 60s tolerance
+  
+  return nodes.map(node => {
+    const lastSeen = new Date(node.lastSeen);
+    const timeSinceLastSeen = now.getTime() - lastSeen.getTime();
+    
+    // Update status based on last seen time
+    const newStatus = timeSinceLastSeen > offlineThreshold ? 'offline' : 'online';
+    
+    return {
+      ...node,
+      status: newStatus
+    };
+  });
+}
+
+// Network monitoring function for equipment
+async function pingHost(ip: string): Promise<{ online: boolean; responseTime?: number; error?: string }> {
+  try {
+    // Use ping with timeout and single packet
+    const isWindows = process.platform === 'win32';
+    const pingCmd = isWindows 
+      ? `ping -n 1 -w 3000 ${ip}` 
+      : `ping -c 1 -W 3 ${ip}`;
+    
+    const startTime = Date.now();
+    const { stdout } = await execAsync(pingCmd);
+    const responseTime = Date.now() - startTime;
+    
+    // Check if ping was successful (basic check for "ttl" or "TTL" in output)
+    const isOnline = stdout.toLowerCase().includes('ttl');
+    
+    return {
+      online: isOnline,
+      responseTime: isOnline ? responseTime : undefined
+    };
+  } catch (error) {
+    return {
+      online: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
+
+// Network monitoring service
+async function updateNetworkStatuses(): Promise<void> {
+  try {
+    const equipmentFile = path.resolve(process.cwd(), 'data/equipment-data.json');
+    
+    if (!fs.existsSync(equipmentFile)) {
+      return;
+    }
+    
+    const data = fs.readFileSync(equipmentFile, 'utf8');
+    let equipment = JSON.parse(data) || [];
+    
+    let updated = false;
+    
+    // Update network status for equipment with monitoring enabled
+    for (const item of equipment) {
+      if (item.category === 'networking' && 
+          item.network_info?.monitor_enabled && 
+          item.network_info?.ip_address) {
+        
+        const pingResult = await pingHost(item.network_info.ip_address);
+        
+        // Update network status
+        item.network_status = {
+          online: pingResult.online,
+          response_time: pingResult.responseTime,
+          last_ping: new Date().toISOString(),
+          packet_loss: pingResult.online ? 0 : 100
+        };
+        
+        updated = true;
+        console.log(`📡 Network status updated for ${item.name} (${item.network_info.ip_address}): ${pingResult.online ? 'ONLINE' : 'OFFLINE'}`);
+      }
+    }
+    
+    // Write back updated equipment if any changes were made
+    if (updated) {
+      fs.writeFileSync(equipmentFile, JSON.stringify(equipment, null, 2));
+    }
+  } catch (error) {
+    console.error('❌ Error updating network statuses:', error);
+  }
+}
+
+// Start network monitoring service
+let networkMonitoringInterval: NodeJS.Timeout | null = null;
+function startNetworkMonitoring(): void {
+  if (networkMonitoringInterval) {
+    clearInterval(networkMonitoringInterval);
+  }
+  
+  console.log('🌐 Starting network equipment monitoring service...');
+  
+  // Run initial check
+  updateNetworkStatuses();
+  
+  // Schedule regular checks every 30 seconds
+  networkMonitoringInterval = setInterval(() => {
+    updateNetworkStatuses();
+  }, 30000);
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // System status
-  app.get("/api/status/overview", async (req, res) => {
-    try {
-      const status = await storage.getSystemStatus();
-      res.json(status);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to get system status" });
-    }
+  console.log('🎨 Minimal dashboard-only server starting...');
+  
+  // Register authentication routes first
+  setupAuthRoutes(app);
+  
+  // Register ledger routes (Custodian system)
+  setupLedgerRoutes(app);
+  
+  // Register infrastructure routes (modules, domains, etc.)
+  await registerInfrastructureRoutes(app);
+  
+  // Start network equipment monitoring service
+  startNetworkMonitoring();
+  
+  // Basic health endpoint for dashboard
+  app.get("/api/health", async (req, res) => {
+    res.json({ 
+      status: "healthy", 
+      message: "Dashboard ready - Revolutionary system coming soon",
+      timestamp: new Date().toISOString()
+    });
   });
 
-  // Nodes
+
+
+  // Node management endpoints for SMART-Node agents
   app.get("/api/nodes", async (req, res) => {
     try {
-      const nodes = await storage.getNodes();
-      res.json(nodes);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to get nodes" });
-    }
-  });
-
-  app.get("/api/nodes/:id", async (req, res) => {
-    try {
-      const node = await storage.getNode(req.params.id);
-      if (!node) {
-        return res.status(404).json({ error: "Node not found" });
+      const nodesFile = path.resolve(process.cwd(), 'data/nodes-data.json');
+      
+      if (fs.existsSync(nodesFile)) {
+        const data = fs.readFileSync(nodesFile, 'utf8');
+        let nodes = JSON.parse(data) || [];
+        
+        // Update node statuses based on last seen
+        nodes = updateNodeStatuses(nodes);
+        
+        // Write back updated statuses to file
+        fs.writeFileSync(nodesFile, JSON.stringify(nodes, null, 2));
+        
+        res.json(nodes);
+      } else {
+        res.json([]);
       }
-      res.json(node);
     } catch (error) {
-      res.status(500).json({ error: "Failed to get node" });
+      console.error('Error loading nodes:', error);
+      res.status(500).json({ error: 'Failed to load nodes' });
     }
   });
 
+  // Node Discovery - Listen for UDP broadcasts from SmartNode agents
+  app.post("/api/nodes/discover", async (req, res) => {
+    try {
+      console.log("🔍 Retrieving discovered agents from UDP broadcasts...");
+      
+      // Get discovered agents from the global store (set by UDP server)
+      const discoveredAgents = (global as any).discoveredAgents as Map<string, any>;
+      
+      if (!discoveredAgents) {
+        return res.status(500).json({
+          success: false,
+          error: "UDP discovery server not available",
+          details: "Discovery service may not be running"
+        });
+      }
+      
+      // Convert Map to array and get existing nodes to filter
+      const agents: any[] = Array.from(discoveredAgents.values());
+      const nodesFile = path.resolve(process.cwd(), 'data/nodes-data.json');
+      let existingIPs: string[] = [];
+      
+      if (fs.existsSync(nodesFile)) {
+        const data = fs.readFileSync(nodesFile, 'utf8');
+        const existingNodes = JSON.parse(data) || [];
+        existingIPs = existingNodes.map((n: any) => n.ipAddress);
+      }
+      
+      const newAgents = agents.filter(agent => !existingIPs.includes(agent.ip));
+      
+      console.log(`Found ${agents.length} broadcasting agents, ${newAgents.length} new`);
+      
+      res.json({
+        success: true,
+        discovered_agents: newAgents,
+        stats: {
+          packets_received: agents.length,
+          unique_agents: agents.length,
+          already_registered: agents.length - newAgents.length
+        },
+        message: "Retrieved broadcasting agents from UDP discovery",
+        discovery_time: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      console.error("Node discovery error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to retrieve broadcasting agents",
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Node Agent Registration - for auto-registration from SMARTNodeAgent
+  app.post("/api/nodes/register", async (req, res) => {
+    try {
+      console.log("🤖 Node agent registration attempt:", req.body);
+      
+      const agentData = req.body;
+      const nodesFile = path.resolve(process.cwd(), 'data/nodes-data.json');
+      
+      let nodes = [];
+      if (fs.existsSync(nodesFile)) {
+        const data = fs.readFileSync(nodesFile, 'utf8');
+        nodes = JSON.parse(data) || [];
+      }
+      
+      // Generate SMART-ID for nodes
+      const { SmartIdGenerator } = await import('./smart-id-generator');
+      const generateSmartId = () => {
+        return SmartIdGenerator.generateNodeId();
+      };
+
+      // Get platform info from discovered agents if available
+      const discoveredAgents = (global as any).discoveredAgents as Map<string, any>;
+      let platformInfo = null;
+      
+      if (discoveredAgents) {
+        // Find the agent data for this IP
+        discoveredAgents.forEach((agent, key) => {
+          if (agent.ip === agentData.ipAddress) {
+            // Extract platform information from the broadcast data
+            platformInfo = {
+              os: agent.system_info?.os || agent.device_info?.os || 'Unknown',
+              architecture: agent.system_info?.architecture || 'unknown',
+              platform: agent.system_info?.platform || 'unknown',
+              deviceModel: agent.device_info?.model || agent.system_info?.hostname,
+              version: agent.device_info?.android_version || agent.system_info?.version
+            };
+          }
+        });
+      }
+
+      // Create node from agent registration data
+      const newNode = {
+        id: Date.now().toString(),
+        name: agentData.name || `Node-${Date.now()}`,
+        type: agentData.type || 'smart_station_node',
+        ipAddress: agentData.ipAddress || '127.0.0.1',
+        sshPort: agentData.sshPort || 22,
+        capabilities: agentData.capabilities || ['auto-discovered'],
+        resources: agentData.resources || { cpuCores: 1, ramGb: 1, storageGb: 32 },
+        status: agentData.status || 'online',
+        smartId: generateSmartId(), // Auto-assigned SMART-ID
+        platformInfo: platformInfo, // Store the rich platform data
+        lastSeen: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      nodes.push(newNode);
+      fs.writeFileSync(nodesFile, JSON.stringify(nodes, null, 2));
+      
+      console.log(`✅ Registered agent: ${newNode.name} (${newNode.ipAddress})`);
+      
+            // Activity logging now handled by SMART-Ledger system
+      
+      res.json({
+        success: true,
+        id: newNode.id,
+        node: newNode,
+        message: "Node registered successfully",
+        smart_id: newNode.smartId
+      });
+    } catch (error) {
+      console.error('Error registering node agent:', error);
+      res.status(500).json({ 
+        success: false,
+        error: 'Failed to register node agent',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Create/Register new node (manual registration from UI)
   app.post("/api/nodes", async (req, res) => {
     try {
-      const nodeData = insertNodeSchema.parse(req.body);
-      const node = await storage.createNode(nodeData);
-      res.status(201).json(node);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Invalid node data", details: error.errors });
-      }
-      res.status(500).json({ error: "Failed to create node" });
-    }
-  });
-
-  app.post("/api/nodes/:id/test", async (req, res) => {
-    try {
-      const node = await storage.getNode(req.params.id);
-      if (!node) {
-        return res.status(404).json({ error: "Node not found" });
+      const nodeData = req.body;
+      const nodesFile = path.resolve(process.cwd(), 'data/nodes-data.json');
+      
+      let nodes = [];
+      if (fs.existsSync(nodesFile)) {
+        const data = fs.readFileSync(nodesFile, 'utf8');
+        nodes = JSON.parse(data) || [];
       }
       
-      // Simulate SSH connectivity test
-      const isOnline = Math.random() > 0.2; // 80% success rate
-      const status = isOnline ? 'online' : 'offline';
+      // Generate proper Node SMART-ID 
+      const { SmartIdGenerator } = await import('./smart-id-generator');
+      const generateSmartId = () => {
+        return SmartIdGenerator.generateNodeId();
+      };
+
+      // Get platform info from discovered agents if available
+      const discoveredAgents = (global as any).discoveredAgents as Map<string, any>;
+      let platformInfo = null;
       
-      await storage.updateNode(req.params.id, { 
-        status, 
-        lastSeen: isOnline ? new Date() : node.lastSeen 
-      });
-      
-      res.json({ success: isOnline, status });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to test node connectivity" });
-    }
-  });
-
-  // Modules
-  app.get("/api/modules/available", async (req, res) => {
-    try {
-      const modules = await storage.getModules();
-      res.json(modules);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to get modules" });
-    }
-  });
-
-  app.post("/api/modules/scan", async (req, res) => {
-    try {
-      // Simulate module scanning
-      const newModules = [
-        {
-          name: "PulseAudit",
-          version: "v1.1.0",
-          path: "/modules/pulse-audit",
-          type: "core" as const,
-          description: "Advanced audit trail system for comprehensive logging and compliance monitoring.",
-          configuration: { retention_days: 365, format: "json" },
-          status: "discovered" as const
-        }
-      ];
-
-      for (const moduleData of newModules) {
-        await storage.createModule(moduleData);
-      }
-
-      res.json({ scanned: newModules.length, modules: newModules });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to scan modules" });
-    }
-  });
-
-  app.post("/api/modules/load/:name", async (req, res) => {
-    try {
-      const modules = await storage.getModules();
-      const module = modules.find(m => m.name.toLowerCase().replace(/\s+/g, '-') === req.params.name);
-      
-      if (!module) {
-        return res.status(404).json({ error: "Module not found" });
-      }
-
-      await storage.updateModule(module.id, { status: 'loaded' });
-      const updatedModule = await storage.getModule(module.id);
-      
-      res.json(updatedModule);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to load module" });
-    }
-  });
-
-  // Deployments
-  app.get("/api/deployments", async (req, res) => {
-    try {
-      const deployments = await storage.getDeployments();
-      const modules = await storage.getModules();
-      const nodes = await storage.getNodes();
-      
-      // Enrich deployments with module and node data
-      const enrichedDeployments = deployments.map(deployment => ({
-        ...deployment,
-        module: modules.find(m => m.id === deployment.moduleId),
-        node: nodes.find(n => n.id === deployment.nodeId)
-      }));
-      
-      res.json(enrichedDeployments);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to get deployments" });
-    }
-  });
-
-  app.get("/api/deployments/:id", async (req, res) => {
-    try {
-      const deployment = await storage.getDeployment(req.params.id);
-      if (!deployment) {
-        return res.status(404).json({ error: "Deployment not found" });
-      }
-      
-      const module = await storage.getModule(deployment.moduleId);
-      const node = await storage.getNode(deployment.nodeId);
-      
-      res.json({ ...deployment, module, node });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to get deployment" });
-    }
-  });
-
-  const deploymentRequestSchema = z.object({
-    moduleId: z.string(),
-    nodeIds: z.array(z.string()),
-    configuration: z.record(z.any()).optional()
-  });
-
-  app.post("/api/deploy", async (req, res) => {
-    try {
-      const { moduleId, nodeIds, configuration } = deploymentRequestSchema.parse(req.body);
-      
-      const module = await storage.getModule(moduleId);
-      if (!module) {
-        return res.status(400).json({ error: "Module not found" });
-      }
-
-      const deployments = [];
-      for (const nodeId of nodeIds) {
-        const node = await storage.getNode(nodeId);
-        if (!node) {
-          continue; // Skip invalid nodes
-        }
-
-        const deployment = await storage.createDeployment({
-          moduleId,
-          nodeId,
-          status: 'deploying',
-          configuration: configuration || {}
+      if (discoveredAgents) {
+        discoveredAgents.forEach((agent, key) => {
+          if (agent.ip === nodeData.ipAddress) {
+            platformInfo = {
+              os: agent.system_info?.os || agent.device_info?.os || 'Unknown',
+              architecture: agent.system_info?.architecture || 'unknown',
+              platform: agent.system_info?.platform || 'unknown',
+              deviceModel: agent.device_info?.model || agent.system_info?.hostname,
+              version: agent.device_info?.android_version || agent.system_info?.version
+            };
+          }
         });
-        
-        deployments.push(deployment);
+      }
 
-        // Simulate deployment process
-        setTimeout(async () => {
-          const success = Math.random() > 0.1; // 90% success rate
-          await storage.updateDeployment(deployment.id, {
-            status: success ? 'deployed' : 'failed',
-            deployedAt: success ? new Date() : null
-          });
-        }, Math.random() * 10000 + 2000); // 2-12 seconds
+      // Add node with generated data
+      const newNode = {
+        id: Date.now().toString(),
+        name: nodeData.name,
+        type: nodeData.type,
+        ipAddress: nodeData.ipAddress,
+        sshPort: nodeData.sshPort || 22,
+        capabilities: nodeData.capabilities || ['registered'],
+        resources: nodeData.resources || { cpuCores: 1, ramGb: 1, storageGb: 1 },
+        status: 'online',
+        smartId: nodeData.smartId || generateSmartId(), // Auto-assigned fake SMART-ID
+        platformInfo: platformInfo, // Include platform data
+        lastSeen: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      nodes.push(newNode);
+      fs.writeFileSync(nodesFile, JSON.stringify(nodes, null, 2));
+      
+      // Activity logging now handled by SMART-Ledger system
+      
+      res.json({
+        success: true,
+        node: newNode,
+        message: "Node registered successfully"
+      });
+    } catch (error) {
+      console.error('Error creating node:', error);
+      res.status(500).json({ error: 'Failed to create node' });
+    }
+  });
+
+  // Update node
+  app.put("/api/nodes/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updateData = req.body;
+      const nodesFile = path.resolve(process.cwd(), 'data/nodes-data.json');
+      
+      if (fs.existsSync(nodesFile)) {
+        const data = fs.readFileSync(nodesFile, 'utf8');
+        let nodes = JSON.parse(data) || [];
+        
+        const nodeIndex = nodes.findIndex((node: any) => node.id === id);
+        if (nodeIndex === -1) {
+          return res.status(404).json({ error: 'Node not found' });
+        }
+        
+        nodes[nodeIndex] = {
+          ...nodes[nodeIndex],
+          ...updateData,
+          updatedAt: new Date().toISOString()
+        };
+        
+        fs.writeFileSync(nodesFile, JSON.stringify(nodes, null, 2));
+        
+        res.json({
+          success: true,
+          node: nodes[nodeIndex],
+          message: 'Node updated successfully'
+        });
+      } else {
+        res.status(404).json({ error: 'Node not found' });
+      }
+    } catch (error) {
+      console.error('Error updating node:', error);
+      res.status(500).json({ error: 'Failed to update node' });
+    }
+  });
+
+  // Delete node
+  app.delete("/api/nodes/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const nodesFile = path.resolve(process.cwd(), 'data/nodes-data.json');
+      
+      if (fs.existsSync(nodesFile)) {
+        const data = fs.readFileSync(nodesFile, 'utf8');
+        let nodes = JSON.parse(data) || [];
+        
+        // Find the node before deleting for activity log
+        const deletedNode = nodes.find((node: any) => node.id === id);
+        
+        nodes = nodes.filter((node: any) => node.id !== id);
+        fs.writeFileSync(nodesFile, JSON.stringify(nodes, null, 2));
+        
+        // Activity logging now handled by SMART-Ledger system
+        
+        res.json({
+          success: true,
+          message: 'Node deleted successfully'
+        });
+      } else {
+        res.status(404).json({ error: 'Node not found' });
+      }
+    } catch (error) {
+      console.error('Error deleting node:', error);
+      res.status(500).json({ error: 'Failed to delete node' });
+    }
+  });
+
+  // Node heartbeat - from SMARTNodeAgent
+  app.post("/api/nodes/:id/heartbeat", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const heartbeatData = req.body;
+      const nodesFile = path.resolve(process.cwd(), 'data/nodes-data.json');
+      
+      if (fs.existsSync(nodesFile)) {
+        const data = fs.readFileSync(nodesFile, 'utf8');
+        let nodes = JSON.parse(data) || [];
+        
+        const nodeIndex = nodes.findIndex((node: any) => node.id === id);
+        if (nodeIndex === -1) {
+          return res.status(404).json({ error: 'Node not found' });
+        }
+        
+        // Update node with heartbeat data
+        nodes[nodeIndex] = {
+          ...nodes[nodeIndex],
+          status: 'online',
+          lastSeen: new Date().toISOString(),
+          lastHeartbeat: heartbeatData.timestamp || Date.now()
+        };
+        
+        // Update status if provided
+        if (heartbeatData.status) {
+          nodes[nodeIndex].currentStatus = heartbeatData.status;
+        }
+        
+        fs.writeFileSync(nodesFile, JSON.stringify(nodes, null, 2));
+        
+        res.json({
+          success: true,
+          message: 'Heartbeat received'
+        });
+      } else {
+        res.status(404).json({ error: 'Node not found' });
+      }
+    } catch (error) {
+      console.error('Error processing heartbeat:', error);
+      res.status(500).json({ error: 'Failed to process heartbeat' });
+    }
+  });
+
+  app.get("/api/infrastructure/deployments", async (req, res) => {
+    res.json([]);
+  });
+
+  app.get("/api/infrastructure/domains", async (req, res) => {
+    res.json([]);
+  });
+
+  // Equipment settings endpoints
+  app.get("/api/equipment/settings", async (req, res) => {
+    try {
+      const settingsFile = path.resolve(process.cwd(), 'equipment-settings.json');
+      
+      if (fs.existsSync(settingsFile)) {
+        const data = fs.readFileSync(settingsFile, 'utf8');
+        const settings = JSON.parse(data);
+        res.json({ settings });
+      } else {
+        // Return default NDT settings
+        const defaultSettings = {
+          categories: {
+            testing: {
+              name: "Testing Equipment",
+              description: "Non-destructive testing equipment and instruments",
+              types: ["ultrasonic", "radiographic", "magnetic_particle", "dye_penetrant", "eddy_current", "visual"]
+            },
+            welding: {
+              name: "Welding Equipment", 
+              description: "Welding machines, torches, and related equipment",
+              types: ["arc_welder", "mig_welder", "tig_welder", "plasma_cutter", "torch", "electrodes"]
+            },
+            chemical: {
+              name: "Chemical Processing",
+              description: "Chemical processing tanks, mixers, and equipment",
+              types: ["mixing_tank", "storage_tank", "reactor", "pump", "valve", "filter"]
+            },
+            inspection: {
+              name: "Inspection Tools",
+              description: "Visual and measurement inspection equipment",
+              types: ["borescope", "caliper", "gauge", "microscope", "camera", "probe"]
+            },
+            coating: {
+              name: "Coating Equipment",
+              description: "Surface coating and treatment equipment", 
+              types: ["spray_gun", "oven", "booth", "blaster", "cleaner", "applicator"]
+            },
+            networking: {
+              name: "Network Infrastructure",
+              description: "Networking and communication equipment",
+              types: ["router", "switch", "gateway", "antenna", "cable", "modem"]
+            },
+            measurement: {
+              name: "Measurement Tools",
+              description: "Precision measurement and calibration equipment",
+              types: ["multimeter", "oscilloscope", "pressure_gauge", "flow_meter", "scale", "sensor"]
+            },
+            safety: {
+              name: "Safety Equipment",
+              description: "Safety and protective equipment",
+              types: ["gas_detector", "alarm", "barrier", "ventilation", "emergency_stop", "ppe"]
+            }
+          },
+          certifications: [
+            "ASNT Level I", "ASNT Level II", "ASNT Level III",
+            "AWS Certified", "API 510", "API 570", "API 653",
+            "NACE Certified", "ISO 9712", "EN 473",
+            "SNT-TC-1A", "CGSB-48", "ACCP"
+          ],
+          connectivityOptions: [
+            "ethernet", "wifi", "bluetooth", "usb", "serial", "rs485"
+          ],
+          statusOptions: ["operational", "maintenance", "offline", "error"]
+        };
+        res.json({ settings: defaultSettings });
+      }
+    } catch (error) {
+      console.error('Error loading equipment settings:', error);
+      res.status(500).json({ error: 'Failed to load equipment settings' });
+    }
+  });
+
+  app.post("/api/equipment/settings", async (req, res) => {
+    try {
+      const { settings } = req.body;
+      const settingsFile = path.resolve(process.cwd(), 'equipment-settings.json');
+      
+      fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2));
+      
+      res.json({ 
+        success: true, 
+        message: 'Equipment settings saved successfully' 
+      });
+    } catch (error) {
+      console.error('Error saving equipment settings:', error);
+      res.status(500).json({ error: 'Failed to save equipment settings' });
+    }
+  });
+
+  // Equipment CRUD endpoints
+  app.get("/api/equipment", async (req, res) => {
+    try {
+      const equipmentFile = path.resolve(process.cwd(), 'data/equipment-data.json');
+      
+      if (fs.existsSync(equipmentFile)) {
+        const data = fs.readFileSync(equipmentFile, 'utf8');
+        const equipment = JSON.parse(data);
+        res.json(equipment || []);
+      } else {
+        res.json([]);
+      }
+    } catch (error) {
+      console.error('Error loading equipment:', error);
+      res.status(500).json({ error: 'Failed to load equipment' });
+    }
+  });
+
+  app.post("/api/equipment", async (req, res) => {
+    try {
+      const newEquipment = req.body;
+      const equipmentFile = path.resolve(process.cwd(), 'data/equipment-data.json');
+      
+      let equipment = [];
+      if (fs.existsSync(equipmentFile)) {
+        const data = fs.readFileSync(equipmentFile, 'utf8');
+        equipment = JSON.parse(data) || [];
       }
       
-      res.status(201).json(deployments);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Invalid deployment data", details: error.errors });
+      // Add ID if not provided
+      if (!newEquipment.id) {
+        newEquipment.id = Date.now().toString();
       }
-      res.status(500).json({ error: "Failed to create deployment" });
-    }
-  });
-
-  app.post("/api/deployments/:id/start", async (req, res) => {
-    try {
-      const deployment = await storage.updateDeployment(req.params.id, { 
-        status: 'deployed',
-        deployedAt: new Date()
+      
+      equipment.push(newEquipment);
+      fs.writeFileSync(equipmentFile, JSON.stringify(equipment, null, 2));
+      
+      res.json({ 
+        success: true, 
+        equipment: newEquipment,
+        message: 'Equipment added successfully' 
       });
-      if (!deployment) {
-        return res.status(404).json({ error: "Deployment not found" });
-      }
-      res.json(deployment);
     } catch (error) {
-      res.status(500).json({ error: "Failed to start deployment" });
+      console.error('Error saving equipment:', error);
+      res.status(500).json({ error: 'Failed to save equipment' });
     }
   });
 
-  app.post("/api/deployments/:id/stop", async (req, res) => {
+  app.delete("/api/equipment/:id", async (req, res) => {
     try {
-      const deployment = await storage.updateDeployment(req.params.id, { status: 'stopped' });
-      if (!deployment) {
-        return res.status(404).json({ error: "Deployment not found" });
+      const { id } = req.params;
+      const equipmentFile = path.resolve(process.cwd(), 'data/equipment-data.json');
+      
+      if (fs.existsSync(equipmentFile)) {
+        const data = fs.readFileSync(equipmentFile, 'utf8');
+        let equipment = JSON.parse(data) || [];
+        
+        equipment = equipment.filter((item: any) => item.id !== id);
+        fs.writeFileSync(equipmentFile, JSON.stringify(equipment, null, 2));
+        
+        res.json({ 
+          success: true, 
+          message: 'Equipment deleted successfully' 
+        });
+      } else {
+        res.status(404).json({ error: 'Equipment not found' });
       }
-      res.json(deployment);
     } catch (error) {
-      res.status(500).json({ error: "Failed to stop deployment" });
+      console.error('Error deleting equipment:', error);
+      res.status(500).json({ error: 'Failed to delete equipment' });
     }
   });
 
-  app.post("/api/deployments/:id/restart", async (req, res) => {
-    try {
-      const deployment = await storage.updateDeployment(req.params.id, { 
-        status: 'deployed',
-        deployedAt: new Date()
-      });
-      if (!deployment) {
-        return res.status(404).json({ error: "Deployment not found" });
-      }
-      res.json(deployment);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to restart deployment" });
-    }
-  });
-
-  app.delete("/api/deployments/:id", async (req, res) => {
-    try {
-      const success = await storage.deleteDeployment(req.params.id);
-      if (!success) {
-        return res.status(404).json({ error: "Deployment not found" });
-      }
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete deployment" });
-    }
-  });
-
-  const httpServer = createServer(app);
-  return httpServer;
+  const server = createServer(app);
+  console.log('✅ Dashboard-only server ready - All 4 tabs will load properly');
+  return server;
 }

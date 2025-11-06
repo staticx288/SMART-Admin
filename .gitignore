@@ -4,3 +4,10 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Runtime cache files
+data/modules_cache.json
+data/nodes-data.json
+data/equipment-data.json
+data/ledger/
+*.cache

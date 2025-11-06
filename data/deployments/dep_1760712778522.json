@@ -1,0 +1,12 @@
+{
+  "deploymentId": "dep_1760712778522",
+  "domainId": "TESTING-NODE-DOM-42019",
+  "domainName": "Testing Node",
+  "deploymentMethod": "usb_drive",
+  "deploymentTargets": [
+    "1760712161051"
+  ],
+  "status": "completed",
+  "createdAt": "2025-10-17T14:52:58.522Z",
+  "completedAt": "2025-10-17T14:52:58.522Z"
+}

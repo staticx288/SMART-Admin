@@ -1,0 +1,245 @@
+{
+  "scenarios": [
+    {
+      "id": "success",
+      "title": "Complete Success Scenario",
+      "description": "Full workflow validation - all systems pass",
+      "icon": "✅",
+      "contract": "SC-2025-001-LP",
+      "partId": "PART-ABC-12345",
+      "operator": "John Technician (USR-TECH-001)",
+      "station": "LP-Station-A2",
+      "expectedResult": "complete",
+      "tags": ["success", "full-workflow", "compliance"]
+    },
+    {
+      "id": "wrong-contract",
+      "title": "Wrong Contract Type",
+      "description": "RT contract attempted at LP station",
+      "icon": "❌",
+      "contract": "SC-2025-002-RT",
+      "partId": "PART-RT-789",
+      "operator": "Jane Technician (USR-TECH-002)",
+      "station": "LP-Station-A2",
+      "expectedResult": "blocked-gatekeeper",
+      "failurePoint": "Gatekeeper",
+      "tags": ["contract-mismatch", "station-capability"]
+    },
+    {
+      "id": "missing-certs",
+      "title": "Missing Certifications",
+      "description": "Operator lacks required safety certifications",
+      "icon": "❌",
+      "contract": "SC-2025-003-LP", 
+      "partId": "PART-DEF-456",
+      "operator": "Bob Novice (USR-TECH-003)",
+      "station": "LP-Station-A2",
+      "expectedResult": "blocked-gatekeeper",
+      "failurePoint": "Gatekeeper",
+      "missingCerts": ["radiation_safety", "pre_test_calibration"],
+      "tags": ["certification", "operator-validation"]
+    },
+    {
+      "id": "wrong-part",
+      "title": "Part Verification Failure",
+      "description": "Physical part doesn't match contract specification",
+      "icon": "❌",
+      "contract": "SC-2025-004-LP",
+      "partId": "PART-WRONG-88888",
+      "expectedPart": "PART-EXPECTED-99999",
+      "operator": "Carol Expert (USR-TECH-004)",
+      "station": "LP-Station-A2",
+      "expectedResult": "blocked-vision",
+      "failurePoint": "Vision",
+      "tags": ["part-mismatch", "vision-validation"]
+    },
+    {
+      "id": "missing-standards",
+      "title": "Missing Standards Contracts",
+      "description": "Station lacks required SmartStandards validation",
+      "icon": "❌",
+      "contract": "SC-2025-005-LP",
+      "partId": "PART-GHI-789",
+      "operator": "Dave Qualified (USR-TECH-005)",
+      "station": "LP-Station-A2",
+      "expectedResult": "blocked-gatekeeper",
+      "failurePoint": "Gatekeeper",
+      "missingContracts": ["ST-ASTM-E165", "ST-ISO-9001"],
+      "tags": ["standards", "contract-missing"]
+    },
+    {
+      "id": "safety-token",
+      "title": "Safety Token Failure",
+      "description": "PPE compliance validation failure",
+      "icon": "❌",
+      "contract": "SC-2025-006-LP",
+      "partId": "PART-JKL-012",
+      "operator": "Eve Uncertified (USR-TECH-006)",
+      "station": "LP-Station-A2",
+      "expectedResult": "blocked-safety",
+      "failurePoint": "Safety",
+      "missingToken": "PPE_REQUIRED",
+      "tags": ["safety", "ppe-compliance"]
+    }
+  ],
+
+  "workflow_stages": [
+    {
+      "id": "gatekeeper",
+      "name": "Gatekeeper Validation",
+      "icon": "🚪",
+      "description": "SmartContract, operator, and station verification",
+      "validations": [
+        "SmartContract validity",
+        "Operator authorization", 
+        "Required SmartContracts presence"
+      ]
+    },
+    {
+      "id": "vision",
+      "name": "Vision Verification", 
+      "icon": "📷",
+      "description": "QR scanning and part identification",
+      "validations": [
+        "QR code scanning",
+        "Part verification against references",
+        "Dual-signature confidence (AI + Human)"
+      ]
+    },
+    {
+      "id": "safety",
+      "name": "Safety Validation",
+      "icon": "🛡️", 
+      "description": "PPE and hazmat clearance verification",
+      "validations": [
+        "PPE compliance via SF-PPE-STD",
+        "HAZMAT clearance via SF-LP-C"
+      ]
+    },
+    {
+      "id": "maintenance",
+      "name": "Equipment Maintenance",
+      "icon": "🔧",
+      "description": "Calibration and environmental validation",
+      "validations": [
+        "Equipment calibration via MN-LP-A",
+        "Environmental conditions check",
+        "Tool readiness per MN-TOOL-CAL"
+      ]
+    },
+    {
+      "id": "compliance",
+      "name": "Testing Compliance",
+      "icon": "⚖️",
+      "description": "Pre-test requirements and acknowledgments",
+      "validations": [
+        "Pre-test completion via LP-Checklist-Red",
+        "Operator acknowledgment via SP-LP-PROCESS-2"
+      ]
+    },
+    {
+      "id": "standards",
+      "name": "Industry Standards",
+      "icon": "📋",
+      "description": "ASTM and ISO standard verification",
+      "validations": [
+        "ASTM E165 liquid penetrant standard",
+        "ISO 9001 quality management"
+      ]
+    },
+    {
+      "id": "test-execution",
+      "name": "Test Execution",
+      "icon": "🔬",
+      "description": "Actual testing procedure",
+      "validations": [
+        "Liquid penetrant test execution"
+      ]
+    },
+    {
+      "id": "qa",
+      "name": "Quality Assurance",
+      "icon": "🎯",
+      "description": "Result validation and accuracy check",
+      "validations": [
+        "Test procedure adherence",
+        "Result accuracy validation"
+      ]
+    },
+    {
+      "id": "guardian", 
+      "name": "Guardian Authorization",
+      "icon": "🛡️",
+      "description": "Final verification and backup creation",
+      "validations": [
+        "All signoffs verification",
+        "Local backup creation",
+        "Handoff authorization"
+      ]
+    },
+    {
+      "id": "handoff",
+      "name": "Data Handoff",
+      "icon": "📤",
+      "description": "Dual-direction data transfer",
+      "validations": [
+        "Business Hub transfer",
+        "Next station routing",
+        "Transfer confirmation"
+      ]
+    }
+  ],
+
+  "event_types": {
+    "info_broadcast": {
+      "icon": "📡",
+      "color": "blue",
+      "description": "Status updates and milestone notifications"
+    },
+    "ledger_entry": {
+      "icon": "📖", 
+      "color": "green",
+      "description": "Blockchain audit trail entries"
+    },
+    "alert_broadcast": {
+      "icon": "🚨",
+      "color": "red", 
+      "description": "High priority alerts and failures"
+    },
+    "validation_check": {
+      "icon": "🔍",
+      "color": "yellow",
+      "description": "Individual validation step results"
+    }
+  },
+
+  "smart_contracts": {
+    "maintenance": [
+      {"id": "MN-LP-A", "description": "Liquid penetrant equipment maintenance"},
+      {"id": "MN-TOOL-CAL", "description": "Tool calibration requirements"}
+    ],
+    "safety": [
+      {"id": "SF-PPE-STD", "description": "PPE compliance standards"},
+      {"id": "SF-LP-C", "description": "Liquid penetrant safety clearance"}
+    ],
+    "compliance": [
+      {"id": "LP-Checklist-Red", "description": "Pre-test checklist completion"},
+      {"id": "SP-LP-PROCESS-2", "description": "Standard process acknowledgment"}
+    ],
+    "standards": [
+      {"id": "ST-ASTM-E165", "description": "ASTM E165 liquid penetrant standard"},
+      {"id": "ST-ISO-9001", "description": "ISO 9001 quality management"}
+    ]
+  },
+
+  "certifications": [
+    {"id": "NDT_Level_2", "name": "NDT Level 2 Certification"},
+    {"id": "NDT_Level_3", "name": "NDT Level 3 Certification"}, 
+    {"id": "LP_Certified", "name": "Liquid Penetrant Certified"},
+    {"id": "RT_Certified", "name": "Radiographic Testing Certified"},
+    {"id": "hazmat_certified", "name": "Hazmat Handling Certified"},
+    {"id": "pre_test_calibration", "name": "Pre-Test Calibration"},
+    {"id": "environmental_conditions", "name": "Environmental Conditions"},
+    {"id": "radiation_safety", "name": "Radiation Safety Certified"}
+  ]
+}
