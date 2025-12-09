@@ -1,0 +1,22 @@
+[Unit]
+Description=SMART Node Agent - Autonomous Infrastructure Discovery
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/smart_node_agent
+ExecStart=/usr/bin/python3 /home/pi/smart_node_agent/UniversalSMARTAgent.py
+Restart=always
+RestartSec=10
+StandardOutput=append:/home/pi/smart_node_agent/logs/agent.log
+StandardError=append:/home/pi/smart_node_agent/logs/agent_error.log
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -15,9 +15,11 @@ SMART-Hub is the **distributed orchestration network** of the SMART-ecosystem, s
 ├── GPU: ASRock RX 560 4GB (Basic acceleration)
 ├── Boot: ADATA Gen4 NVMe 1TB (7,400 MB/s)
 ├── Storage: WD Blue 3D NAND 1TB (SATA SSD 560 MB/s)
-├── Storage: 4TB HDD
-├── Storage: 4TB HDD
-└── Storage: 6TB HDD
+├── Storage: 2TB HDD (3.5)
+├── Storage: 2TB HDD (3.5)
+├── Storage: 4TB HDD (3.5)
+├── Storage: 4TB HDD (3.5)
+└── Storage: 6TB HDD (3.5) (Optional spilt into 2 partions)
 
 **🌟 Role:** Secure data coordination, identity control, access token enforcement, policy management, and payroll logic enforcement.
 
@@ -55,7 +57,7 @@ SMART-Hub is the **distributed orchestration network** of the SMART-ecosystem, s
 ├── CPU: Intel i5-9600K (6C @ 3.7GHz, 4.6GHz boost)
 ├── RAM: 32GB DDR4 @ 3600
 ├── Boot: Samsung 980 NVMe 1TB (3,500 MB/s)
-└── Storage: 2TB HDD
+└── Storage: 1TB HDD (2.5)
 
 **Role:** External interface layer and lightweight frontend for Vault Hub operations, providing secure access to central systems via minimal-profile gateway.
 
@@ -90,7 +92,7 @@ SMART-Hub is the **distributed orchestration network** of the SMART-ecosystem, s
 ├── CPU: AMD Ryzen 5 5600G  (6C/12T @ 3.5GHz, AM5)
 ├── RAM: 32GB DDR4 @ 3600
 ├── Boot: ADATA LEGEND 850 1TB (5,000MB/s)
-└── Storage: Seagate 1TB HDD 
+└── Storage: 1TB HDD (2.5)
 
 **Role:** Direct manufacturing operations and asset coordination
 
@@ -118,9 +120,9 @@ SMART-Hub is the **distributed orchestration network** of the SMART-ecosystem, s
 ├── CPU: AMD RYZEN 3 2200G (4C/4T @ 3.5GHz, AM4)
 ├── RAM: 32GB DDR4 @ 2400
 ├── Boot: WD Blue 3D NAND 1TB (SATA SSD 560 MB/s)
-├── Storage: Toshiba 500GB HDD
-├── Storage: Hitachi 500GB HDD
-└── Storage: Seagate 500GB HDD
+├── Storage: 500GB HDD (3.5)
+├── Storage: 500GB HDD (3.5)
+└── Storage: 500GB HDD (3.5)
 
 **Role:** Software development and deployments to hub/nodes
 

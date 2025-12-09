@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/auth-context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,11 +63,18 @@ interface Node {
     deviceModel?: string; // "Samsung Galaxy Z Fold6", "Dell XPS 13", etc.
     version?: string;     // OS version details
   };
+  // Network interfaces (stored during registration from discovery)
+  networkInterfaces?: Array<{
+    name: string;
+    ip: string;
+    type: string;  // 'ethernet', 'wifi', 'other'
+  }>;
 }
 
 
 
 export default function SmartNodesManager() {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
@@ -85,13 +93,20 @@ export default function SmartNodesManager() {
     mutationFn: async (agentData: any) => {
       console.log('Registering agent with data:', agentData);
       
+      // Use first interface's IP if multiple interfaces available
+      const primaryIp = agentData.interfaces && agentData.interfaces.length > 0 
+        ? agentData.interfaces[0].ip 
+        : agentData.ipAddress || agentData.ip;
+      
       const nodeData = {
         name: agentData.name,
         type: agentData.type,
-        ipAddress: agentData.ipAddress,
+        ipAddress: primaryIp,
         sshPort: agentData.sshPort,
         capabilities: agentData.capabilities || ["auto-discovered"],
-        resources: agentData.resources
+        resources: agentData.resources,
+        // Store all interfaces for future reference
+        networkInterfaces: agentData.interfaces
       };
       
       console.log('Sending node data:', nodeData);
@@ -112,7 +127,11 @@ export default function SmartNodesManager() {
 
       const nodeResult = await nodeResponse.json();
 
-      // Then, report to the SMART-Ledger
+      // Then, report to the SMART-Ledger (required for audit trail)
+      if (!user?.id) {
+        throw new Error('User authentication required for ledger audit trail');
+      }
+      
       const ledgerResponse = await fetch("/api/ledger/record", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -122,12 +141,14 @@ export default function SmartNodesManager() {
           action: "register",
           target: agentData.name,
           details: `Registered ${agentData.type === 'smart_hub_node' ? 'Hub' : 'Node'} from auto-discovery (${agentData.ipAddress})`,
-          smart_id: nodeResult.node?.smartId || `NOD-${nodeResult.node?.id?.slice(0, 5).toUpperCase()}`
+          smart_id: nodeResult.node?.smartId || `NOD-${nodeResult.node?.id?.slice(0, 5).toUpperCase()}`,
+          user_id: user.id
         })
       });
       
       if (!ledgerResponse.ok) {
-        throw new Error(`Failed to log node registration to ledger: ${ledgerResponse.status} ${ledgerResponse.statusText}`);
+        const ledgerError = await ledgerResponse.json();
+        throw new Error(`Ledger audit failed: ${ledgerError.error || 'Unknown ledger error'}`);
       }
 
       return nodeResult;
@@ -175,8 +196,12 @@ export default function SmartNodesManager() {
       
       const result = await deleteResponse.json();
       
-      // Report to ledger
+      // Report to ledger (required for audit trail)
       if (nodeToDelete) {
+        if (!user?.id) {
+          throw new Error('User authentication required for ledger audit trail');
+        }
+        
         const ledgerResponse = await fetch("/api/ledger/record", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -186,12 +211,14 @@ export default function SmartNodesManager() {
             action: "delete",
             target: nodeToDelete.name,
             details: `Removed ${nodeToDelete.type === 'smart_hub_node' ? 'Hub' : 'Node'} from infrastructure (${nodeToDelete.ipAddress})`,
-            smart_id: (nodeToDelete as any).smartId || `NOD-${nodeId.slice(0, 5).toUpperCase()}`
+            smart_id: (nodeToDelete as any).smartId || `NOD-${nodeId.slice(0, 5).toUpperCase()}`,
+            user_id: user.id
           })
         });
         
         if (!ledgerResponse.ok) {
-          throw new Error(`Failed to log node deletion to ledger: ${ledgerResponse.status} ${ledgerResponse.statusText}`);
+          const ledgerError = await ledgerResponse.json();
+          throw new Error(`Ledger audit failed: ${ledgerError.error || 'Unknown ledger error'}`);
         }
       }
       
@@ -224,22 +251,32 @@ export default function SmartNodesManager() {
       
       const result = await updateResponse.json();
       
-      // Report to ledger
-      try {
-        await fetch("/api/ledger/record", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            tab: "nodes",
-            action_type: "node",
-            action: "update",
-            target: data.name || editingNode?.name || "Unknown",
-            details: `Updated ${data.type === 'smart_hub_node' ? 'Hub' : 'Node'} configuration (${data.ipAddress || editingNode?.ipAddress})`,
-            smart_id: result.smartId || (editingNode as any)?.smartId || `NOD-${id.slice(0, 5).toUpperCase()}`
-          })
-        });
-      } catch (ledgerError) {
-        console.warn('Failed to report update to ledger:', ledgerError);
+      // Report to ledger (required for audit trail)
+      if (!user?.id) {
+        throw new Error('User authentication required for ledger audit trail');
+      }
+      
+      if (!data.name && !editingNode?.name) {
+        throw new Error('Node name is required for ledger audit trail');
+      }
+      
+      const ledgerResponse = await fetch("/api/ledger/record", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tab: "nodes",
+          action_type: "node",
+          action: "update",
+          target: data.name || editingNode!.name,
+          details: `Updated ${data.type === 'smart_hub_node' ? 'Hub' : 'Node'} configuration (${data.ipAddress || editingNode?.ipAddress})`,
+          smart_id: result.smartId || (editingNode as any)?.smartId || `NOD-${id.slice(0, 5).toUpperCase()}`,
+          user_id: user.id
+        })
+      });
+      
+      if (!ledgerResponse.ok) {
+        const ledgerError = await ledgerResponse.json();
+        throw new Error(`Ledger audit failed: ${ledgerError.error || 'Unknown ledger error'}`);
       }
       
       return result;
@@ -290,20 +327,24 @@ export default function SmartNodesManager() {
   });
 
   const getStatusIcon = (status: string | undefined) => {
-    if (!status) return <Clock className="h-4 w-4 text-gray-600" />;
+    if (!status) {
+      throw new Error('Node status is required but not provided');
+    }
     switch (status.toLowerCase()) {
       case "online": return <CheckCircle className="h-4 w-4 text-green-600" />;
       case "offline": return <XCircle className="h-4 w-4 text-red-600" />;
-      default: return <Clock className="h-4 w-4 text-gray-600" />;
+      default: throw new Error(`Invalid node status: ${status}`);
     }
   };
 
   const getStatusColor = (status: string | undefined) => {
-    if (!status) return "text-gray-600 border-gray-600";
+    if (!status) {
+      throw new Error('Node status is required but not provided');
+    }
     switch (status.toLowerCase()) {
       case "online": return "text-green-600 border-green-600";
       case "offline": return "text-red-600 border-red-600";
-      default: return "text-gray-600 border-gray-600";
+      default: throw new Error(`Invalid node status: ${status}`);
     }
   };
 
@@ -382,7 +423,6 @@ export default function SmartNodesManager() {
     
     // Fallback to name-based detection for older nodes without platformInfo
     const name = node.name.toLowerCase();
-    const ip = node.ipAddress;
     
     // Android detection - look for multiple indicators
     const isAndroidDevice = 
@@ -402,8 +442,8 @@ export default function SmartNodesManager() {
       return { platform: "Android", icon: "📱", color: "text-green-600" };
     }
     
-    // Raspberry Pi detection
-    if (name.includes('raspberry') || name.includes('pi') || ip.startsWith('172.16.')) {
+    // Raspberry Pi detection (hostname/name only - no IP-based detection for reliability)
+    if (name.includes('raspberry') || name.includes('pi')) {
       return { platform: "Raspberry Pi", icon: "🥧", color: "text-pink-600" };
     }
     
@@ -846,7 +886,8 @@ export default function SmartNodesManager() {
                                     cpuCores: 1,
                                     ramGb: 1,
                                     storageGb: 64
-                                  }
+                                  },
+                                  interfaces: agent.interfaces || []
                                 };
                                 
                                 registerDiscoveredAgent.mutate(agentData);
@@ -951,9 +992,38 @@ export default function SmartNodesManager() {
                 </div>
               </div>
 
+              {/* Network Interfaces (if available) */}
+              {editingNode.networkInterfaces && editingNode.networkInterfaces.length > 0 && (
+                <div className="border rounded-lg p-4 bg-muted/50">
+                  <h3 className="text-lg font-semibold mb-3 flex items-center space-x-2">
+                    <Network className="h-5 w-5 text-blue-500" />
+                    <span>Network Interfaces</span>
+                  </h3>
+                  <div className="space-y-2">
+                    {editingNode.networkInterfaces.map((iface, idx) => (
+                      <div key={idx} className="flex items-center space-x-3 p-2 bg-background rounded">
+                        <span className="text-xl">
+                          {iface.type === 'ethernet' ? '🔌' : 
+                           iface.type === 'wifi' ? '📡' : '🌐'}
+                        </span>
+                        <div className="flex-1">
+                          <div className="font-mono text-sm font-medium">{iface.ip}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {iface.name} • {iface.type.charAt(0).toUpperCase() + iface.type.slice(1)}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Primary IP ({editingNode.ipAddress}) is used for SSH connections
+                  </p>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-ip">IP Address</Label>
+                  <Label htmlFor="edit-ip">Primary IP Address</Label>
                   <Input
                     id="edit-ip"
                     name="ipAddress"
@@ -986,7 +1056,7 @@ export default function SmartNodesManager() {
                       id="edit-cpu"
                       name="cpuCores"
                       type="number"
-                      defaultValue={editingNode.resources?.cpuCores || 1}
+                      defaultValue={Math.round(editingNode.resources?.cpuCores || 1)}
                       min="1"
                       required
                     />
@@ -998,7 +1068,7 @@ export default function SmartNodesManager() {
                       id="edit-ram"
                       name="ramGb"
                       type="number"
-                      defaultValue={editingNode.resources?.ramGb || 1}
+                      defaultValue={Math.round(editingNode.resources?.ramGb || 1)}
                       min="1"
                       required
                     />
@@ -1010,7 +1080,7 @@ export default function SmartNodesManager() {
                       id="edit-storage"
                       name="storageGb"
                       type="number"
-                      defaultValue={editingNode.resources?.storageGb || 10}
+                      defaultValue={Math.round(editingNode.resources?.storageGb || 10)}
                       min="1"
                       required
                     />
@@ -1157,7 +1227,24 @@ function DiscoveredAgentCard({
                 </div>
               )}
               <div className="text-sm text-muted-foreground font-mono">
-                {agent.ip} • Type: {isEditingType ? (
+                {/* Show all network interfaces if available */}
+                {agent.interfaces && agent.interfaces.length > 0 ? (
+                  <div className="space-y-1">
+                    {agent.interfaces.map((iface: any, idx: number) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <span className="text-xs">
+                          {iface.type === 'ethernet' ? '🔌' : 
+                           iface.type === 'wifi' ? '📡' : '🌐'}
+                        </span>
+                        <span>{iface.ip}</span>
+                        <span className="text-xs text-muted-foreground">({iface.name})</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <span>{agent.ip}</span>
+                )}
+                {' • Type: '}{isEditingType ? (
                   <select
                     value={customType}
                     onChange={(e) => setCustomType(e.target.value)}
@@ -1185,12 +1272,6 @@ function DiscoveredAgentCard({
                 )}
               </div>
             </div>
-            {isRegistered && (
-              <Badge variant="outline" className="text-green-400 border-green-400/50 bg-green-500/10">
-                <CheckCircle className="h-3 w-3 mr-1" />
-                Registered
-              </Badge>
-            )}
           </div>
           
           {/* Auto-detected hardware */}
@@ -1247,20 +1328,24 @@ function NodeTableRow({
   deleteNode: any;
 }) {
   const getStatusIcon = (status: string | undefined) => {
-    if (!status) return <Clock className="h-4 w-4 text-gray-600" />;
+    if (!status) {
+      throw new Error('Node status is required but not provided');
+    }
     switch (status.toLowerCase()) {
       case "online": return <CheckCircle className="h-4 w-4 text-green-600" />;
       case "offline": return <XCircle className="h-4 w-4 text-red-600" />;
-      default: return <Clock className="h-4 w-4 text-gray-600" />;
+      default: throw new Error(`Invalid node status: ${status}`);
     }
   };
 
   const getStatusColor = (status: string | undefined) => {
-    if (!status) return "text-gray-600 border-gray-600";
+    if (!status) {
+      throw new Error('Node status is required but not provided');
+    }
     switch (status.toLowerCase()) {
       case "online": return "text-green-600 border-green-600";
       case "offline": return "text-red-600 border-red-600";
-      default: return "text-gray-600 border-gray-600";
+      default: throw new Error(`Invalid node status: ${status}`);
     }
   };
 
@@ -1329,7 +1414,6 @@ function NodeTableRow({
     
     // Fallback to name-based detection for older nodes without platformInfo
     const name = node.name.toLowerCase();
-    const ip = node.ipAddress;
     
     // Android detection - look for multiple indicators
     const isAndroidDevice = 
@@ -1349,8 +1433,8 @@ function NodeTableRow({
       return { platform: "Android", icon: "📱", color: "text-green-600" };
     }
     
-    // Raspberry Pi detection
-    if (name.includes('raspberry') || name.includes('pi') || ip.startsWith('172.16.')) {
+    // Raspberry Pi detection (hostname/name only - no IP-based detection for reliability)
+    if (name.includes('raspberry') || name.includes('pi')) {
       return { platform: "Raspberry Pi", icon: "🥧", color: "text-pink-600" };
     }
     
@@ -1401,10 +1485,31 @@ function NodeTableRow({
       </TableCell>
       <TableCell>
         <div className="space-y-1">
-          <div className="font-mono text-sm">{node.ipAddress}</div>
-          <div className="text-xs text-muted-foreground">
-            SSH: {node.sshPort}
-          </div>
+          {/* Show all network interfaces if available */}
+          {node.networkInterfaces && node.networkInterfaces.length > 0 ? (
+            <div className="space-y-1">
+              {node.networkInterfaces.map((iface, idx) => (
+                <div key={idx} className="flex items-center space-x-2 text-sm">
+                  <span className="text-xs">
+                    {iface.type === 'ethernet' ? '🔌' : 
+                     iface.type === 'wifi' ? '📡' : '🌐'}
+                  </span>
+                  <span className="font-mono">{iface.ip}</span>
+                  <span className="text-xs text-muted-foreground">({iface.name})</span>
+                </div>
+              ))}
+              <div className="text-xs text-muted-foreground">
+                SSH: {node.sshPort}
+              </div>
+            </div>
+          ) : (
+            <div>
+              <div className="font-mono text-sm">{node.ipAddress}</div>
+              <div className="text-xs text-muted-foreground">
+                SSH: {node.sshPort}
+              </div>
+            </div>
+          )}
         </div>
       </TableCell>
       <TableCell>
@@ -1427,7 +1532,7 @@ function NodeTableRow({
         <div className="flex items-center space-x-2">
           {getStatusIcon(node.status)}
           <Badge variant="outline" className={getStatusColor(node.status)}>
-            {node.status || 'unknown'}
+            {node.status ? node.status : (() => { throw new Error(`Node ${node.name} has no status`); })()}
           </Badge>
         </div>
       </TableCell>

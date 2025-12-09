@@ -26,16 +26,90 @@ class UniversalSMARTAgent:
         self.running = False
         self.hostname = socket.gethostname()
         self.local_ip = self.get_local_ip()
+        self.network_interfaces = self.get_all_network_interfaces()
         self.platform_info = self.detect_platform_info()
         
     def get_local_ip(self) -> str:
-        """Get local IP address"""
+        """Get primary local IP address (for backwards compatibility)"""
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
                 s.connect(("8.8.8.8", 80))
                 return s.getsockname()[0]
         except:
             return '127.0.0.1'
+    
+    def get_interface_type(self, interface_name: str) -> str:
+        """Detect if interface is ethernet, wifi, or other"""
+        name_lower = interface_name.lower()
+        
+        # WiFi/Wireless indicators
+        wifi_indicators = ['wlan', 'wlp', 'wifi', 'wireless', 'wl']
+        if any(indicator in name_lower for indicator in wifi_indicators):
+            return 'wifi'
+        
+        # Ethernet indicators
+        ethernet_indicators = ['eth', 'enp', 'eno', 'ens', 'em']
+        if any(indicator in name_lower for indicator in ethernet_indicators):
+            return 'ethernet'
+        
+        # Default to other
+        return 'other'
+    
+    def get_all_network_interfaces(self) -> list:
+        """Get all available network interfaces with their IP addresses"""
+        interfaces = []
+        
+        # List of virtual/container interface prefixes to skip
+        virtual_prefixes = ['docker', 'br-', 'virbr', 'vmnet', 'veth', 'vbox', 'tun', 'tap']
+        
+        def is_virtual_interface(name: str) -> bool:
+            """Check if interface is virtual/container interface"""
+            name_lower = name.lower()
+            # Check if name starts with any virtual prefix
+            for prefix in virtual_prefixes:
+                if name_lower.startswith(prefix):
+                    return True
+            return False
+        
+        try:
+            import netifaces
+            # Use netifaces if available for better interface detection
+            for interface in netifaces.interfaces():
+                # Skip virtual interfaces
+                if is_virtual_interface(interface):
+                    continue
+                    
+                try:
+                    addrs = netifaces.ifaddresses(interface)
+                    if netifaces.AF_INET in addrs:
+                        for addr in addrs[netifaces.AF_INET]:
+                            ip = addr.get('addr')
+                            if ip and not ip.startswith('127.') and not ip.startswith('169.254.'):
+                                interfaces.append({
+                                    'interface': interface,
+                                    'ip': ip,
+                                    'broadcast': addr.get('broadcast', '255.255.255.255'),
+                                    'type': self.get_interface_type(interface)
+                                })
+                except:
+                    continue
+        except ImportError as e:
+            # netifaces is REQUIRED - no fallback
+            raise RuntimeError(f"netifaces library is required but not installed: {e}. Install with: pip install netifaces")
+        
+        # Require at least one interface - no fallback
+        if not interfaces:
+            raise RuntimeError("No valid network interfaces found. Agent cannot broadcast without network connectivity.")
+        
+        # Remove duplicates based on IP address
+        seen_ips = set()
+        unique_interfaces = []
+        for iface in interfaces:
+            if iface['ip'] not in seen_ips:
+                seen_ips.add(iface['ip'])
+                unique_interfaces.append(iface)
+        
+        return unique_interfaces
     
     def get_windows_version(self) -> str:
         """Get detailed Windows version"""
@@ -340,32 +414,34 @@ class UniversalSMARTAgent:
         device_model = self.get_device_model()
         
         # Get hardware info using psutil
+        # Hardware resources - require all or fail
         try:
-            cpu_cores = psutil.cpu_count(logical=False) or psutil.cpu_count() or 1
+            cpu_cores = psutil.cpu_count(logical=False) or psutil.cpu_count()
+            if not cpu_cores:
+                raise RuntimeError("Could not detect CPU core count")
+            
             cpu_threads = psutil.cpu_count() or cpu_cores
             
             # Memory in GB
             memory_bytes = psutil.virtual_memory().total
+            if not memory_bytes:
+                raise RuntimeError("Could not detect memory size")
             memory_gb = round(memory_bytes / (1024**3), 1)
             
-            # Storage in GB (main disk)
-            storage_gb = 0
-            try:
-                # Get the main disk usage
-                if system == 'Windows':
-                    storage = shutil.disk_usage('C:\\')
-                else:
-                    storage = shutil.disk_usage('/')
-                storage_gb = round(storage.total / (1024**3), 0)
-            except:
-                storage_gb = 100  # Fallback
+            # Storage in GB (main disk) - required, no fallback
+            # Get the main disk usage
+            if system == 'Windows':
+                storage = shutil.disk_usage('C:\\\\')
+            else:
+                storage = shutil.disk_usage('/')
+            storage_gb = round(storage.total / (1024**3), 0)
+            
+            if not storage_gb:
+                raise RuntimeError("Could not detect storage size")
                 
         except Exception as e:
-            logger.warning(f"Hardware detection failed: {e}")
-            cpu_cores = 1
-            cpu_threads = 1
-            memory_gb = 4.0
-            storage_gb = 100
+            logger.error(f"Hardware detection failed: {e}")
+            raise RuntimeError(f"Hardware detection is required for agent operation: {e}")
         
         platform_info = {
             'os': os_version,
@@ -425,35 +501,72 @@ class UniversalSMARTAgent:
         return json.dumps(message)
     
     def broadcast_loop(self):
-        """Main broadcast loop - sends UDP discovery every 10 seconds"""
+        """Main broadcast loop - sends UDP discovery every 10 seconds on all interfaces"""
         device_name = self.platform_info.get('device_model') or self.hostname
         platform_name = self.platform_info['os']
         
-        logger.info(f"Starting UDP broadcast for {device_name} ({self.local_ip})")
-        logger.info(f"📊 Broadcasting: {self.platform_info['cpu_cores']}c/{self.platform_info['memory_gb']}GB/{self.platform_info['storage_gb']}GB")
+        # Get all network interfaces
+        interfaces = self.get_all_network_interfaces()
         
+        logger.info(f"Starting UDP broadcast for {device_name}")
+        logger.info(f"📊 Broadcasting: {self.platform_info['cpu_cores']}c/{self.platform_info['memory_gb']}GB/{self.platform_info['storage_gb']}GB")
+        logger.info(f"🌐 Found {len(interfaces)} network interface(s):")
+        for iface in interfaces:
+            logger.info(f"   - {iface['interface']}: {iface['ip']} -> {iface['broadcast']}")
+        
+        sockets = []
         try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+            # Create socket for each interface
+            for iface in interfaces:
+                try:
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                    sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+                    # Bind to specific interface if possible
+                    try:
+                        sock.bind((iface['ip'], 0))
+                    except:
+                        # If binding fails, use default binding
+                        pass
+                    sockets.append((sock, iface))
+                except Exception as e:
+                    logger.debug(f"Failed to create socket for {iface['interface']}: {e}")
+            
+            # Require at least one socket - no fallback
+            if not sockets:
+                raise RuntimeError("Failed to create broadcast sockets for any network interface. Cannot operate without network connectivity.")
             
             while self.running:
                 try:
-                    message = self.create_broadcast_message()
-                    sock.sendto(message.encode(), ('255.255.255.255', 8765))
-                    logger.debug(f"📡 Broadcasted: {platform_name} -> {self.local_ip}")
+                    # Broadcast on each interface
+                    for sock, iface in sockets:
+                        try:
+                            # Create message with interface-specific IP
+                            message_data = json.loads(self.create_broadcast_message())
+                            message_data['ip'] = iface['ip']
+                            message_data['interface'] = iface['interface']
+                            message_data['interface_type'] = iface.get('type', 'other')
+                            message = json.dumps(message_data)
+                            
+                            sock.sendto(message.encode(), (iface['broadcast'], 8765))
+                            logger.debug(f"📡 Broadcasted: {platform_name} -> {iface['interface']} ({iface['ip']})")
+                            
+                        except Exception as e:
+                            logger.debug(f"Broadcast error on {iface['interface']}: {e}")
                     
                 except Exception as e:
-                    logger.error(f"Broadcast error: {e}")
+                    logger.error(f"Broadcast loop error: {e}")
                 
                 time.sleep(10)  # Broadcast every 10 seconds
                 
         except Exception as e:
             logger.error(f"Broadcast setup failed: {e}")
         finally:
-            try:
-                sock.close()
-            except:
-                pass
+            # Close all sockets
+            for sock, iface in sockets:
+                try:
+                    sock.close()
+                except:
+                    pass
             logger.info("Broadcast stopped")
     
     def start(self):
@@ -463,6 +576,11 @@ class UniversalSMARTAgent:
         if self.platform_info['device_model']:
             logger.info(f"🏭 Device: {self.platform_info['device_model']}")
         
+        # Log detected network interfaces
+        logger.info(f"🌐 Detected {len(self.network_interfaces)} network interface(s):")
+        for iface in self.network_interfaces:
+            logger.info(f"   - {iface['interface']}: {iface['ip']}")
+        
         self.running = True
         
         # Start broadcast thread
@@ -470,7 +588,7 @@ class UniversalSMARTAgent:
         self.broadcast_thread.start()
         
         logger.info("✅ Universal Agent started - broadcasting on UDP port 8765")
-        logger.info("📡 Your device should now appear in SMART-Admin!")
+        logger.info("📡 Your device should now appear in SMART-Admin on all network interfaces!")
         
         # Keep main thread alive
         try:

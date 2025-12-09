@@ -23,7 +23,6 @@ import SmartDomainEcosystems from "./smart-domain-ecosystems";
 import SmartNodesManager from "./smart-nodes-manager";
 import ConfigurableEquipmentManager from "./smart-equipment-manager";
 import SmartLedgerViewer from "./smart-ledger-viewer";
-import SmartDemo from "../demo/smart-demo";
 
 const infrastructureTabs = [
   { name: "Overview", href: "/", icon: LayoutDashboard, color: "text-yellow-500" },
@@ -32,7 +31,6 @@ const infrastructureTabs = [
   { name: "Domain Ecosystems", href: "/domain-ecosystems", icon: Package, color: "text-red-500" },
   { name: "Equipment", href: "/equipment", icon: HardDrive, color: "text-blue-500" },
   { name: "Ledger", href: "/ledger", icon: FileText, color: "text-emerald-500" },
-  { name: "Demo", href: "/demo", icon: TestTube, color: "text-cyan-500" },
 ];
 
 export function InfrastructureLayout() {
@@ -113,7 +111,6 @@ export function InfrastructureLayout() {
               <Route path="/domain-ecosystems" component={SmartDomainEcosystems} />
               <Route path="/equipment" component={ConfigurableEquipmentManager} />
               <Route path="/ledger" component={SmartLedgerViewer} />
-              <Route path="/demo" component={SmartDemo} />
             </Switch>
           </div>
         </main>

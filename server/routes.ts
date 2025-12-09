@@ -187,30 +187,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Convert Map to array and get existing nodes to filter
+      // Convert Map to array and group by hostname to combine interfaces
       const agents: any[] = Array.from(discoveredAgents.values());
+      
+      // Group agents by hostname - combine multiple interfaces from same device
+      const agentsByHostname = new Map<string, any>();
+      
+      agents.forEach(agent => {
+        const hostname = agent.hostname || agent.system_info?.hostname;
+        
+        if (!hostname) {
+          console.error('Agent missing hostname, skipping:', agent);
+          return; // Skip agents without valid hostname
+        }
+        
+        if (!agent.interface) {
+          console.error('Agent missing interface name, skipping:', agent);
+          return; // Skip agents without valid interface
+        }
+        
+        if (!agent.interface_type) {
+          console.error('Agent missing interface type, skipping:', agent);
+          return; // Skip agents without interface type
+        }
+        
+        if (agentsByHostname.has(hostname)) {
+          // Add this interface to existing agent
+          const existing = agentsByHostname.get(hostname);
+          if (!existing.interfaces) {
+            if (!existing.interface) {
+              throw new Error(`Existing agent for ${hostname} missing interface data`);
+            }
+            existing.interfaces = [{
+              name: existing.interface,
+              ip: existing.ip,
+              broadcast: existing.broadcast,
+              type: existing.interface_type
+            }];
+          }
+          existing.interfaces.push({
+            name: agent.interface,
+            ip: agent.ip,
+            broadcast: agent.broadcast,
+            type: agent.interface_type
+          });
+        } else {
+          // First time seeing this hostname
+          agentsByHostname.set(hostname, {
+            ...agent,
+            interfaces: [{
+              name: agent.interface,
+              ip: agent.ip,
+              broadcast: agent.broadcast,
+              type: agent.interface_type
+            }]
+          });
+        }
+      });
+      
+      // Convert back to array
+      const groupedAgents = Array.from(agentsByHostname.values());
+      
+      // Get existing nodes to filter
       const nodesFile = path.resolve(process.cwd(), 'data/nodes-data.json');
-      let existingIPs: string[] = [];
+      let existingNodes: any[] = [];
       
       if (fs.existsSync(nodesFile)) {
         const data = fs.readFileSync(nodesFile, 'utf8');
-        const existingNodes = JSON.parse(data) || [];
-        existingIPs = existingNodes.map((n: any) => n.ipAddress);
+        existingNodes = JSON.parse(data) || [];
       }
       
-      const newAgents = agents.filter(agent => !existingIPs.includes(agent.ip));
+      // Filter out already registered agents by hostname OR IP address
+      const newAgents = groupedAgents.filter(agent => {
+        const agentHostname = (agent.hostname || agent.system_info?.hostname || '').toLowerCase();
+        const agentIps = agent.interfaces?.map((i: any) => i.ip) || [agent.ip];
+        
+        // Check if any registered node matches this agent's hostname or IP
+        const isAlreadyRegistered = existingNodes.some((node: any) => {
+          const nodeHostname = (node.name || node.platformInfo?.hostname || '').toLowerCase();
+          const nodeIp = node.ipAddress;
+          
+          // Match by hostname (if names match) or by IP address
+          return (agentHostname && nodeHostname === agentHostname) || 
+                 agentIps.includes(nodeIp);
+        });
+        
+        return !isAlreadyRegistered;
+      });
       
-      console.log(`Found ${agents.length} broadcasting agents, ${newAgents.length} new`);
+      console.log(`Found ${agents.length} broadcasts from ${groupedAgents.length} unique devices, ${newAgents.length} new`);
       
       res.json({
         success: true,
         discovered_agents: newAgents,
         stats: {
           packets_received: agents.length,
-          unique_agents: agents.length,
-          already_registered: agents.length - newAgents.length
+          unique_agents: groupedAgents.length,
+          already_registered: groupedAgents.length - newAgents.length,
+          all_broadcasting: agents.map((a: any) => ({
+            ip: a.ip,
+            hostname: a.hostname,
+            interface: a.interface
+          }))
         },
-        message: "Retrieved broadcasting agents from UDP discovery",
+        message: "Retrieved broadcasting agents from UDP discovery (grouped by device)",
         discovery_time: new Date().toISOString()
       });
       
@@ -252,11 +332,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Find the agent data for this IP
         discoveredAgents.forEach((agent, key) => {
           if (agent.ip === agentData.ipAddress) {
-            // Extract platform information from the broadcast data
+            // Extract platform information from the broadcast data - require all fields
+            const os = agent.system_info?.os || agent.device_info?.os;
+            const architecture = agent.system_info?.architecture;
+            const platform = agent.system_info?.platform;
+            
+            if (!os || !architecture || !platform) {
+              throw new Error(`Agent ${agent.hostname} missing required platform info: os=${os}, arch=${architecture}, platform=${platform}`);
+            }
+            
             platformInfo = {
-              os: agent.system_info?.os || agent.device_info?.os || 'Unknown',
-              architecture: agent.system_info?.architecture || 'unknown',
-              platform: agent.system_info?.platform || 'unknown',
+              os,
+              architecture,
+              platform,
               deviceModel: agent.device_info?.model || agent.system_info?.hostname,
               version: agent.device_info?.android_version || agent.system_info?.version
             };
@@ -330,10 +418,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (discoveredAgents) {
         discoveredAgents.forEach((agent, key) => {
           if (agent.ip === nodeData.ipAddress) {
+            // Require all platform fields
+            const os = agent.system_info?.os || agent.device_info?.os;
+            const architecture = agent.system_info?.architecture;
+            const platform = agent.system_info?.platform;
+            
+            if (!os || !architecture || !platform) {
+              throw new Error(`Agent ${agent.hostname} missing required platform info: os=${os}, arch=${architecture}, platform=${platform}`);
+            }
+            
             platformInfo = {
-              os: agent.system_info?.os || agent.device_info?.os || 'Unknown',
-              architecture: agent.system_info?.architecture || 'unknown',
-              platform: agent.system_info?.platform || 'unknown',
+              os,
+              architecture,
+              platform,
               deviceModel: agent.device_info?.model || agent.system_info?.hostname,
               version: agent.device_info?.android_version || agent.system_info?.version
             };
@@ -350,6 +447,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sshPort: nodeData.sshPort || 22,
         capabilities: nodeData.capabilities || ['registered'],
         resources: nodeData.resources || { cpuCores: 1, ramGb: 1, storageGb: 1 },
+        networkInterfaces: nodeData.networkInterfaces || [],
         status: 'online',
         smartId: nodeData.smartId || generateSmartId(), // Auto-assigned fake SMART-ID
         platformInfo: platformInfo, // Include platform data

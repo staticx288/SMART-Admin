@@ -216,13 +216,18 @@ export async function performModuleScan(user_id: string = 'system') {
       newModulesFound: savedCount,
       totalModules: updatedModules.length,
       details: {
-        newModules: updatedModules.slice(-savedCount).map(module => ({
-          name: module.name,
-          type: module.metadata?.moduleClassification || 'Unknown',
-          status: module.status,
-          description: module.description,
-          path: module.modulePath
-        })),
+        newModules: updatedModules.slice(-savedCount).map(module => {
+          if (!module.metadata?.moduleClassification) {
+            throw new Error(`Module ${module.name} is missing required moduleClassification`);
+          }
+          return {
+            name: module.name,
+            type: module.metadata.moduleClassification,
+            status: module.status,
+            description: module.description,
+            path: module.modulePath
+          };
+        }),
         errors: errors
       }
     };
@@ -461,9 +466,10 @@ export function registerInfrastructureRoutes(app: Express) {
           return "healthy";
         }
         
-        // Default fallback
-        console.log(`❓ Overall status: UNKNOWN - Unexpected component statuses: ${JSON.stringify(statuses)}`);
-        return "unknown";
+        // No fallback - throw error for unexpected status
+        const error = `Invalid component statuses detected: ${JSON.stringify(statuses)}`;
+        console.error(`❌ Overall status: ERROR - ${error}`);
+        throw new Error(error);
       };
 
       const nodeDiscoveryStatus = getNodeDiscoveryStatus();
@@ -555,17 +561,19 @@ export function registerInfrastructureRoutes(app: Express) {
     try {
       // This is a USER-initiated scan, get the current user
       const sessionId = request.headers['x-session-id'] || request.cookies?.sessionId;
-      let user_id = 'unknown';
       
-      if (sessionId) {
-        const validation = auth.validateSession(sessionId as string);
-        if (validation.valid) {
-          user_id = validation.user.username;
-        } else {
-          return reply.status(401).json({ error: 'Invalid or expired session' });
-        }
-      } else {
+      if (!sessionId) {
         return reply.status(401).json({ error: 'Authentication required for manual scan' });
+      }
+      
+      const validation = auth.validateSession(sessionId as string);
+      if (!validation.valid) {
+        return reply.status(401).json({ error: 'Invalid or expired session' });
+      }
+      
+      const user_id = validation.user.username;
+      if (!user_id) {
+        return reply.status(500).json({ error: 'User ID not found in session' });
       }
       
       const result = await performModuleScan(user_id); // Pass user_id for manual scans
@@ -748,17 +756,19 @@ export function registerInfrastructureRoutes(app: Express) {
     try {
       // Get the current user for this domain creation
       const sessionId = request.headers['x-session-id'] || request.cookies?.sessionId;
-      let user_id = 'unknown';
       
-      if (sessionId) {
-        const validation = auth.validateSession(sessionId as string);
-        if (validation.valid) {
-          user_id = validation.user.username;
-        } else {
-          return reply.status(401).json({ error: 'Invalid or expired session' });
-        }
-      } else {
+      if (!sessionId) {
         return reply.status(401).json({ error: 'Authentication required for domain creation' });
+      }
+      
+      const validation = auth.validateSession(sessionId as string);
+      if (!validation.valid) {
+        return reply.status(401).json({ error: 'Invalid or expired session' });
+      }
+      
+      const user_id = validation.user.username;
+      if (!user_id) {
+        return reply.status(500).json({ error: 'User ID not found in session' });
       }
       
       const data = DomainEcosystemSchema.parse(request.body);
@@ -887,17 +897,19 @@ export function registerInfrastructureRoutes(app: Express) {
     try {
       // Get the current user for this domain update
       const sessionId = request.headers['x-session-id'] || request.cookies?.sessionId;
-      let user_id = 'unknown';
       
-      if (sessionId) {
-        const validation = auth.validateSession(sessionId as string);
-        if (validation.valid) {
-          user_id = validation.user.username;
-        } else {
-          return reply.status(401).json({ error: 'Invalid or expired session' });
-        }
-      } else {
+      if (!sessionId) {
         return reply.status(401).json({ error: 'Authentication required for domain update' });
+      }
+      
+      const validation = auth.validateSession(sessionId as string);
+      if (!validation.valid) {
+        return reply.status(401).json({ error: 'Invalid or expired session' });
+      }
+      
+      const user_id = validation.user.username;
+      if (!user_id) {
+        return reply.status(500).json({ error: 'User ID not found in session' });
       }
       
       const { domainId } = request.params;
@@ -972,17 +984,19 @@ export function registerInfrastructureRoutes(app: Express) {
     try {
       // Get the current user for this domain deployment
       const sessionId = request.headers['x-session-id'] || request.cookies?.sessionId;
-      let user_id = 'unknown';
       
-      if (sessionId) {
-        const validation = auth.validateSession(sessionId as string);
-        if (validation.valid) {
-          user_id = validation.user.username;
-        } else {
-          return reply.status(401).json({ error: 'Invalid or expired session' });
-        }
-      } else {
+      if (!sessionId) {
         return reply.status(401).json({ error: 'Authentication required for domain deployment' });
+      }
+      
+      const validation = auth.validateSession(sessionId as string);
+      if (!validation.valid) {
+        return reply.status(401).json({ error: 'Invalid or expired session' });
+      }
+      
+      const user_id = validation.user.username;
+      if (!user_id) {
+        return reply.status(500).json({ error: 'User ID not found in session' });
       }
       
       const { domainId } = request.params;
@@ -1079,17 +1093,19 @@ export function registerInfrastructureRoutes(app: Express) {
     try {
       // Get the current user for this domain deletion
       const sessionId = request.headers['x-session-id'] || request.cookies?.sessionId;
-      let user_id = 'unknown';
       
-      if (sessionId) {
-        const validation = auth.validateSession(sessionId as string);
-        if (validation.valid) {
-          user_id = validation.user.username;
-        } else {
-          return reply.status(401).json({ error: 'Invalid or expired session' });
-        }
-      } else {
+      if (!sessionId) {
         return reply.status(401).json({ error: 'Authentication required for domain deletion' });
+      }
+      
+      const validation = auth.validateSession(sessionId as string);
+      if (!validation.valid) {
+        return reply.status(401).json({ error: 'Invalid or expired session' });
+      }
+      
+      const user_id = validation.user.username;
+      if (!user_id) {
+        return reply.status(500).json({ error: 'User ID not found in session' });
       }
       
       const { domainId } = request.params;

@@ -1,6 +1,6 @@
 # SMART-Dashboards Framework
 
-**See only what matters. Enforce what must happen. Prove what did.**
+**See only what matters. Verify what must complete. Prove what did.**
 
 ---
 
@@ -16,7 +16,7 @@ This is more than a dashboard. It’s dynamic infrastructure visibility, smart c
 
 | **Category**                | **Description**                                                                                                                                |
 | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Testing Node Dashboards** | Automatically generated from SmartClientPOs. Show only required tests per part. Enforces execution order, hides tests until pre-checks are complete. |
+| **Testing Node Dashboards** | Automatically generated from SmartClientPOs. Show only required tests per part. Displays execution order, reveals tests as pre-checks are verified complete. |
 | **BusinessOps Dashboards**  | Multi-view dashboards for HR, Contracts, Maintenance, Logistics, etc. Tailored for operations and execs.                                       |
 | **Client Dashboards**       | Real-time test tracking, delivery milestones, document access, optional live Q&A module.                                                       |
 | **Compliance Dashboards**   | Pre-check completions, missed flags, test procedure adherence. Works with Standards & Audit modules.                                           |
@@ -30,7 +30,7 @@ This is more than a dashboard. It’s dynamic infrastructure visibility, smart c
 ### 1. **SmartClientPO-Driven Node Interfaces**
 
 * Each SmartClientPO defines the required test steps and dashboard layout per job.
-* Pre-check enforcement: No test access until validations complete.
+* Pre-check verification: Test access revealed when validations complete.
 * Auto-generates on job load, resets after test completion.
 
 ### 2. **BusinessOps Strategy Dashboards**
@@ -63,7 +63,7 @@ This is more than a dashboard. It’s dynamic infrastructure visibility, smart c
 ## 🚀 Strategic Gains
 
 * Replaces massive printed barcode books with real-time, context-aware dashboards.
-* Enforces process control visually without removing human decision input.
+* Verifies process control visually without removing human decision input.
 * Enhances planning, tracking, and accountability.
 * Bridges testing, compliance, audit, finance, and client engagement in one stack.
 

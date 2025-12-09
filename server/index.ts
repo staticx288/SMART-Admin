@@ -190,21 +190,57 @@ function setupDiscoveryServer(httpPort: number) {
       else if (message.type === 'smart_agent_broadcast') {
         const agentIP = message.ip || rinfo.address;
         
+        // Validate required fields - reject invalid broadcasts
+        if (!message.hostname) {
+          log(`❌ Rejected agent broadcast from ${agentIP}: missing hostname`);
+          return;
+        }
+        
+        if (!message.system_info?.os) {
+          log(`❌ Rejected agent broadcast from ${agentIP}: missing OS info`);
+          return;
+        }
+        
+        if (!message.system_info?.platform) {
+          log(`❌ Rejected agent broadcast from ${agentIP}: missing platform info`);
+          return;
+        }
+        
+        if (!message.system_info?.architecture) {
+          log(`❌ Rejected agent broadcast from ${agentIP}: missing architecture info`);
+          return;
+        }
+        
+        if (!message.interface) {
+          log(`❌ Rejected agent broadcast from ${agentIP}: missing interface name`);
+          return;
+        }
+        
+        if (!message.interface_type) {
+          log(`❌ Rejected agent broadcast from ${agentIP}: missing interface type`);
+          return;
+        }
+        
+        if (!message.resources) {
+          log(`❌ Rejected agent broadcast from ${agentIP}: missing resource information`);
+          return;
+        }
+        
         // Store agent broadcast for discovery
         const agentKey = `${agentIP}:${message.port || 22}`;
         discoveredAgents.set(agentKey, {
           ip: agentIP,
-          hostname: message.hostname || 'Unknown',
+          hostname: message.hostname,
           port: message.port || message.ssh_port || 22,
           ssh_port: message.ssh_port || 22,
           capabilities: message.capabilities || [],
           device_type: message.device_type || 'edge_device',
-          resources: message.resources || null, // Store the resources data!
-          system_info: message.system_info || null, // Store system info
-          device_info: message.system_info || {
-            os: 'Linux', // Default
-            arch: 'unknown'
-          },
+          resources: message.resources,
+          system_info: message.system_info,
+          device_info: message.system_info,
+          interface: message.interface,
+          interface_type: message.interface_type,
+          broadcast: message.broadcast,
           last_seen: new Date().toISOString(),
           source: 'udp_broadcast'
         });
@@ -230,11 +266,9 @@ function setupDiscoveryServer(httpPort: number) {
         }
         
         // Log with resource info
-        const resourceInfo = message.resources ? 
-          `${message.resources.cpu_cores}c/${message.resources.memory_gb}GB RAM` : 
-          'unknown resources';
+        const resourceInfo = `${message.resources.cpu_cores}c/${message.resources.memory_gb}GB RAM`;
         
-        log(`📻 Agent broadcast from ${message.hostname || 'Unknown'} (${agentIP}) - ${resourceInfo}`);
+        log(`📻 Agent broadcast from ${message.hostname} (${agentIP}) - ${resourceInfo}`);
       }
     } catch (error) {
       log(`Error parsing discovery message: ${error}`);

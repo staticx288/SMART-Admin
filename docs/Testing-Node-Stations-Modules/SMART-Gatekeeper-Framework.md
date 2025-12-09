@@ -6,7 +6,7 @@ The **SMART-Gatekeeper** is the **inbound verification checkpoint** responsible 
 2. **Are you authorized?** (Certified personnel with proper credentials)  
 3. **Can this station do this work?** (Proper configuration and capability)
 
-This is a **single-purpose security module** - it validates inbound requests and blocks unauthorized operations. Period.
+This is a **single-purpose security module** - it validates inbound requests and **blocks unauthorized operations at entry**. This is the **only module that blocks** - all other modules verify and acknowledge. Period.
 
 ---
 
@@ -31,7 +31,8 @@ This is a **single-purpose security module** - it validates inbound requests and
 ### Simple Decision Logic
 
 * **ALLOW**: All three checks pass → Operation proceeds
-* **BLOCK**: Any check fails → Operation denied, logged to ledger
+* **BLOCK**: Any check fails → Operation blocked at entry, status logged to ledger
+* **This is the only module that blocks - prevents unauthorized work from starting**
 * **No exceptions, no overrides, no queue management**
 
 ### Integration Points
@@ -88,13 +89,14 @@ This is a **single-purpose security module** - it validates inbound requests and
 * **Waiting** - SmartPO received, waiting for prerequisite completion broadcast
 * **Staged** - Broadcast heard, waiting for SMART-Handoff for delivery
 * **Active** - Full handoff received and validated, ready for operator execution
-* **Blocked** - Validation failed, requires manual intervention
+* **Blocked** - Authorization check failed at entry, work cannot start, requires manual intervention
 
 ---
 
 ## 🧱 Design Philosophy
 
 * **Single Responsibility**: This module does *only* validation and queue management — no task routing or data execution
+* **Entry-Point Blocking**: The **only module that blocks operations** - prevents unauthorized work at entry point
 * **Independent Verification**: It does not depend on remote cloud verification — fully local logic
 * **Trust Anchoring**: Final gate before any test runs; helps ensure complete chain of trust
 * **Broadcast-Driven Activation**: Uses SMART-InfoBroadcast ecosystem for intelligent workflow triggering
@@ -102,5 +104,5 @@ This is a **single-purpose security module** - it validates inbound requests and
 
 ---
 
-This module is essential to maintaining test integrity, enforcing procedural correctness, and protecting against operator or SmartPO misalignment.
+This module is essential to maintaining test integrity, blocking unauthorized operations at entry, and protecting against operator or SmartPO misalignment.
 

@@ -288,40 +288,18 @@ export default function ConfigurableEquipmentManager() {
 
   const createEquipment = useMutation({
     mutationFn: async (data: CreateEquipmentData) => {
-      try {
-        const response = await fetch("/api/equipment", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        });
-        
-        if (!response.ok) {
-          throw new Error("Failed to create equipment");
-        }
-        
-        return response.json();
-      } catch (error) {
-        // Fallback to local storage for development/offline mode
-        const newEquipment: Equipment = {
-          ...data,
-          id: `eq-${Date.now()}`,
-          status: 'operational',
-          lastMaintenance: new Date().toISOString().split('T')[0],
-          nextMaintenance: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          metrics: {
-            uptime: 100,
-            temperature: 25,
-            powerConsumption: 0,
-            utilization: 0
-          },
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-        
-        // Add to local state as fallback
-        setEquipmentData(prev => [...prev, newEquipment]);
-        return newEquipment;
+      const response = await fetch("/api/equipment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to create equipment");
       }
+      
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/equipment", "v2"] });
@@ -343,40 +321,18 @@ export default function ConfigurableEquipmentManager() {
 
   const editEquipment = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: CreateEquipmentData }) => {
-      try {
-        const response = await fetch(`/api/equipment/${id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        });
-        
-        if (!response.ok) {
-          throw new Error("Failed to update equipment");
-        }
-        
-        return response.json();
-      } catch (error) {
-        // Fallback to local storage for development/offline mode
-        const updatedEquipment: Equipment = {
-          ...data,
-          id,
-          status: editingEquipment?.status || 'operational',
-          lastMaintenance: editingEquipment?.lastMaintenance || new Date().toISOString().split('T')[0],
-          nextMaintenance: editingEquipment?.nextMaintenance || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          metrics: editingEquipment?.metrics || {
-            uptime: 100,
-            temperature: 25,
-            powerConsumption: 0,
-            utilization: 0
-          },
-          createdAt: editingEquipment?.createdAt || new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-        
-        // Update local state as fallback
-        setEquipmentData(prev => prev.map(item => item.id === id ? updatedEquipment : item));
-        return updatedEquipment;
+      const response = await fetch(`/api/equipment/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update equipment");
       }
+      
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/equipment", "v2"] });
@@ -399,21 +355,16 @@ export default function ConfigurableEquipmentManager() {
 
   const deleteEquipment = useMutation({
     mutationFn: async (id: string) => {
-      try {
-        const response = await fetch(`/api/equipment/${id}`, {
-          method: "DELETE",
-        });
-        
-        if (!response.ok) {
-          throw new Error("Failed to delete equipment");
-        }
-        
-        return response.json();
-      } catch (error) {
-        // Fallback to local storage for development/offline mode
-        setEquipmentData(prev => prev.filter(item => item.id !== id));
-        return { success: true };
+      const response = await fetch(`/api/equipment/${id}`, {
+        method: "DELETE",
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to delete equipment");
       }
+      
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/equipment"] });
@@ -932,7 +883,12 @@ export default function ConfigurableEquipmentManager() {
                         <Badge variant="outline" className={getStatusColor(item.status, item)}>
                           {item.category === 'networking' && item.network_info?.monitor_enabled
                             ? (item.network_status?.online ? 'Online' : 'Offline')
-                            : (item.status || 'unknown')
+                            : (() => {
+                                if (!item.status) {
+                                  throw new Error(`Equipment ${item.name} is missing required status field`);
+                                }
+                                return item.status;
+                              })()
                           }
                         </Badge>
                       </div>

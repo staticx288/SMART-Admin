@@ -963,11 +963,14 @@ export default function SmartDomainEcosystems() {
               <div className="max-h-[200px] overflow-y-auto border rounded-md p-3 space-y-2">
                 {availableNodes && availableNodes.length > 0 ? (
                   availableNodes.map((node: any) => {
+                    if (!node.status) {
+                      throw new Error(`Node ${node.id} is missing required status field`);
+                    }
                     const target = {
                       id: node.id,
                       name: node.name || node.hostname || `Node ${node.id}`,
                       type: node.type && node.type.includes('hub') ? 'Hub' : 'Node',
-                      status: node.status || 'unknown'
+                      status: node.status
                     };
                     return (
                       <div key={target.id} className="flex items-center justify-between p-2 border rounded">
@@ -1141,8 +1144,11 @@ function CreateDomainForm({
         <div className="max-h-60 overflow-y-auto border rounded-md p-4 space-y-3">
           {modules.length > 0 ? (
             modules.map((module) => {
-              // Get module classification from metadata
-              const moduleClassification = (module as any).metadata?.moduleClassification || 'Unclassified';
+              // Get module classification from metadata - REQUIRED for production
+              const moduleClassification = (module as any).metadata?.moduleClassification;
+              if (!moduleClassification) {
+                throw new Error(`Module ${module.name} is missing required moduleClassification`);
+              }
               const isHub = moduleClassification === 'Hub';
               const isNode = moduleClassification === 'Node';
               const isSystemWide = moduleClassification === 'System Wide';
@@ -1256,7 +1262,10 @@ function EditDomainForm({
             {modules && modules.length > 0 ? (
               modules.map((module) => {
                 // Get module classification from metadata
-                const moduleClassification = (module as any).metadata?.moduleClassification || 'Unclassified';
+                const moduleClassification = (module as any).metadata?.moduleClassification;
+                if (!moduleClassification) {
+                  throw new Error(`Module ${module.name} is missing required moduleClassification`);
+                }
                 const isHub = moduleClassification === 'Hub';
                 const isNode = moduleClassification === 'Node';
                 const isSystemWide = moduleClassification === 'System Wide';

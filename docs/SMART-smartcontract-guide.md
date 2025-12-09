@@ -19,7 +19,7 @@ SMART supports two methods for creating SmartProcessContracts (SP (Special Proce
    - **Column 2**: Description / Metadata
 4. User **verifies and edits content** as needed
 5. User provides a **custom YAML name** (e.g., `SP-LP-ST-001`) for clarity and dropdown reference
-6. Select applicable **enforcement conditions**:
+6. Select applicable **verification conditions**:
    - Examples: `must-complete-before-test`, `require-acknowledgement`, `validate-limits-live`, `check-temp-humidity-before-test`
    - Users may add **multiple conditions per contract**
 7. Click **"Create"** to convert to YAML
@@ -74,13 +74,13 @@ When a client PO is received (upload or manual entry):
 
 1. Open the **SmartClientPO Builder**
 2. Input/import the client’s requested tests same method as setup 1
-3. For each test, link and assign enforcement conditions:
+3. For each test, link and assign verification conditions:
    - 🔧 `SmartSP`
    - 📜 `SmartStandard`
    - 🛡️ `SmartCompliance`
    - 🪪 `Tech Certification` (SMART-ID stored)
    - ⚙️ `SmartMaintenance` (optional)
-   - 📌 **Set enforcement conditions for each linked contract**
+   - 📌 **Set verification conditions for each linked contract**
      - Examples: `must-complete-before-test`, `require-acknowledgement`, `validate-limits-live`
 
 ### 🔖 Example YAML
@@ -130,10 +130,10 @@ Once the physical part is received and verified by **SMART-Vision** and **human 
    - Part is verified a second time by SMART-Vision
    - Tests are verified by SMART-Gatekeeper to make sure they are for this testing node and tech certifications.
    - ClientSmartPO and SmartSP loads to the dashboard
-   - Compliance module enforces pre-checks & certs
+   - Compliance module verifies pre-checks & certs completion
    - Standards are validated live
    - Maintenance readiness is checked (if linked)
-   - **Conditions are enforced in real-time** by backend modules
+   - **Conditions are verified in real-time** by backend modules
 
 > ✅ This all happens automatically. No manual setup needed at the station.
 

@@ -10,13 +10,38 @@
 
 import { Request, Response } from 'express';
 import type { Express } from 'express';
-import { spawn } from 'child_process';
+import { spawn, spawnSync } from 'child_process';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+/**
+ * Find a Python executable on the system. Prefer 'python3', fall back to 'python'.
+ * Returns the command name that can be spawned.
+ */
+function findPythonExecutable(): string {
+  try {
+    const res = spawnSync('python3', ['--version'], { stdio: 'ignore' });
+    if (res.status === 0) return 'python3';
+  } catch {
+    // ignore
+  }
+
+  try {
+    const res = spawnSync('python', ['--version'], { stdio: 'ignore' });
+    if (res.status === 0) return 'python';
+  } catch {
+    // ignore
+  }
+
+  // last resort - return 'python3' which will cause an error later if missing
+  return 'python3';
+}
+
+const PYTHON_CMD = findPythonExecutable();
 
 interface LedgerEntry {
   action_type: 'module' | 'node' | 'equipment' | 'domain' | 'user' | 'system';
@@ -43,7 +68,7 @@ class LedgerBridge {
   private ledgerScript: string;
 
   constructor() {
-    this.pythonPath = 'python3';
+    this.pythonPath = PYTHON_CMD;
     this.ledgerScript = path.join(__dirname, 'smart_ledger.py');
   }
 
@@ -297,7 +322,7 @@ except Exception as e:
     print(f"ERROR:{str(e)}")
 `;
 
-      const python = spawn('python3', ['-c', scriptContent], {
+      const python = spawn(PYTHON_CMD, ['-c', scriptContent], {
         cwd: path.join(__dirname, '..')  // Use project root, not server dir
       });
 
@@ -438,7 +463,7 @@ except Exception as e:
     print(f"ERROR:{str(e)}")
 `;
 
-      const python = spawn('python3', ['-c', scriptContent], {
+      const python = spawn(PYTHON_CMD, ['-c', scriptContent], {
         cwd: path.join(__dirname, '..')  // Use project root, not server dir
       });
 
@@ -542,7 +567,7 @@ except Exception as e:
     print(f"ERROR:{str(e)}")
 `;
 
-      const python = spawn('python3', ['-c', scriptContent], {
+      const python = spawn(PYTHON_CMD, ['-c', scriptContent], {
         cwd: path.join(__dirname, '..')  // Use project root, not server dir
       });
 

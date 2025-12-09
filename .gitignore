@@ -11,3 +11,16 @@ data/nodes-data.json
 data/equipment-data.json
 data/ledger/
 *.cache
+
+# Debug and test files
+cookies.txt
+headers.txt
+*.log
+.venv/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

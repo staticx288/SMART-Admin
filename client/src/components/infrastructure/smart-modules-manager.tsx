@@ -219,7 +219,7 @@ export default function SmartModulesManager() {
             target: moduleToDelete.name,
             details: `Deleted module ${moduleToDelete.name}`,
             smart_id: moduleToDelete.metadata?.smartId,
-            user_id: user?.username || 'unknown'
+            user_id: user?.username || (() => { throw new Error('User authentication required for ledger'); })()
           })
         });
         
@@ -288,13 +288,19 @@ export default function SmartModulesManager() {
   };
 
   const getModuleClassification = (module: ModuleInfo) => {
-    // Use stored classification from metadata if available, otherwise show as unclassified
-    return module.metadata?.moduleClassification || "Unclassified";
+    // Module MUST have classification - no fallbacks for production audit compliance
+    if (!module.metadata?.moduleClassification) {
+      throw new Error(`Module ${module.name} is missing required moduleClassification field`);
+    }
+    return module.metadata.moduleClassification;
   };
 
   const getModuleCategory = (module: ModuleInfo) => {
-    // Use stored category from metadata if available, otherwise show as unclassified  
-    return module.metadata?.categoryClassification || "Unclassified";
+    // Module MUST have category - no fallbacks for production audit compliance
+    if (!module.metadata?.categoryClassification) {
+      throw new Error(`Module ${module.name} is missing required categoryClassification field`);
+    }
+    return module.metadata.categoryClassification;
   };
 
   const getCategoryIcon = (category: string) => {
@@ -351,14 +357,16 @@ export default function SmartModulesManager() {
   };
 
   const formatModuleClassification = (moduleClassification: string) => {
-    if (!moduleClassification) return "Unknown";
-    
+    if (!moduleClassification) {
+      throw new Error('Module classification is required but not provided');
+    }
     return moduleClassification;
   };
 
   const formatStatus = (status: string) => {
-    if (!status) return "Unknown";
-    
+    if (!status) {
+      throw new Error('Module status is required but not provided');
+    }
     return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
@@ -515,7 +523,7 @@ export default function SmartModulesManager() {
           target: configuringModule.name,
           details: `${isValidating ? 'Validated' : 'Updated'} module ${configuringModule.name} as ${configureForm.moduleClassification}`,
           smart_id: configuringModule.metadata?.smartId,
-          user_id: user?.username || 'unknown'
+          user_id: user?.username || (() => { throw new Error('User authentication required for ledger'); })()
         })
       });
       
