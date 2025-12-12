@@ -1,0 +1,22 @@
+smart_contract_id: INV-PEN-MAT-001
+contract_type: SmartInventory
+title: LP Consumables Inventory Readiness Contract
+description: Tracks presence, expiration, and usage of LP inspection consumables.
+status: active
+created_date: '2025-09-01'
+checklist_steps:
+- step: 1
+  description: Verify ZP-60D Penetrant is present and not expired
+  input_type: checkbox
+- step: 2
+  description: Verify ZP-9F Developer is present and not expired
+  input_type: checkbox
+- step: 3
+  description: Check Acetone and DI Water availability
+  input_type: checkbox
+- step: 4
+  description: Flag if any materials are missing or expired
+  input_type: checkbox
+- step: 5
+  description: Log material status to SMART-Ledger
+  input_type: checkbox

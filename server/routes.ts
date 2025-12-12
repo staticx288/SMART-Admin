@@ -4,6 +4,7 @@ import { SettingsManager } from "./settings";
 import { registerInfrastructureRoutes } from "./infrastructure-express-routes";
 import { setupAuthRoutes } from "./auth-routes";
 import { setupLedgerRoutes } from "./ledger-routes";
+import sandboxRoutes from "./sandbox-routes";
 import * as fs from 'fs';
 import * as path from 'path';
 import { exec } from 'child_process';
@@ -131,6 +132,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register infrastructure routes (modules, domains, etc.)
   await registerInfrastructureRoutes(app);
+  
+  // Register sandbox testing routes
+  app.use('/api/sandbox', sandboxRoutes);
   
   // Start network equipment monitoring service
   startNetworkMonitoring();

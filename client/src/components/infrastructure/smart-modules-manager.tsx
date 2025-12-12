@@ -288,19 +288,13 @@ export default function SmartModulesManager() {
   };
 
   const getModuleClassification = (module: ModuleInfo) => {
-    // Module MUST have classification - no fallbacks for production audit compliance
-    if (!module.metadata?.moduleClassification) {
-      throw new Error(`Module ${module.name} is missing required moduleClassification field`);
-    }
-    return module.metadata.moduleClassification;
+    // Return classification if available, otherwise return "Unclassified" for discovered modules
+    return module.metadata?.moduleClassification || "Unclassified";
   };
 
   const getModuleCategory = (module: ModuleInfo) => {
-    // Module MUST have category - no fallbacks for production audit compliance
-    if (!module.metadata?.categoryClassification) {
-      throw new Error(`Module ${module.name} is missing required categoryClassification field`);
-    }
-    return module.metadata.categoryClassification;
+    // Return category if available, otherwise return "Unclassified" for discovered modules
+    return module.metadata?.categoryClassification || "Unclassified";
   };
 
   const getCategoryIcon = (category: string) => {

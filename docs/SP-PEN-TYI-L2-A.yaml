@@ -1,0 +1,50 @@
+smart_contract_id: SP-PEN-TYI-L2-A
+contract_type: SmartSP
+title: Penetrant Inspection - TY I, Level 2, Method A
+description: Special Process steps for Liquid Penetrant Inspection following ASTM-1417-21
+status: active
+created_date: '2025-09-01'
+checklist_steps:
+- step: 1
+  description: Clean parts with acetone using lint-free cloth
+  input_type: checkbox
+- step: 2
+  description: Apply ZP-60D Penetrant via immersion
+  input_type: checkbox
+- step: 3
+  description: Record dwell time and tank temperature
+  input_type: group
+  fields:
+  - label: Dwell Time
+    input_type: number
+    unit: minutes
+    reference_value: 10-30
+  - label: Tank Temp
+    input_type: number
+    unit: "\xB0F"
+- step: 4
+  description: Rinse with DI water
+  input_type: group
+  fields:
+  - label: Water Pressure
+    input_type: number
+    unit: psi
+    reference_value: max 40
+  - label: Water Temp
+    input_type: number
+    unit: "\xB0F"
+    reference_value: 50-100
+- step: 5
+  description: Dry parts in oven or air dry
+  input_type: checkbox
+- step: 6
+  description: Apply developer ZP-9F
+  input_type: checkbox
+- step: 7
+  description: Record development time
+  input_type: number
+  unit: minutes
+  reference_value: 10-60
+- step: 8
+  description: Begin UV light examination
+  input_type: checkbox

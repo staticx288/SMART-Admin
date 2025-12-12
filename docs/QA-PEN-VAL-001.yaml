@@ -1,0 +1,29 @@
+smart_contract_id: QA-PEN-VAL-001
+contract_type: SmartQA
+title: LP Inspection Quality Validation Checklist
+description: Verifies that all LP process outcomes align with quality requirements
+  before finalization.
+status: active
+created_date: '2025-09-01'
+checklist_steps:
+- step: 1
+  description: Ensure developer dwell time was between 10-60 minutes
+  input_type: number
+  unit: minutes
+  reference_value: 10-60
+- step: 2
+  description: "Validate UV light intensity \u2265 1000 \xB5W/cm\xB2"
+  input_type: number
+  unit: "\xB5W/cm\xB2"
+  reference_value: "\u2265 1000"
+- step: 3
+  description: Validate visible light in booth < 2 ftc
+  input_type: number
+  unit: ftc
+  reference_value: < 2
+- step: 4
+  description: Confirm all relevant indications were verified and sized
+  input_type: checkbox
+- step: 5
+  description: Ensure any non-conformances are logged in QA review
+  input_type: checkbox

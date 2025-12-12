@@ -16,7 +16,6 @@ Includes prebuilt contract templates for:
 
 - `SmartClientPO` (Client Process Orders)
 - `SmartSP` (Special Process Logic)
-- `SmartSOP`
 - `SmartCompliance`  
 - `SmartMaintenance`
 - `SmartStandards`
@@ -27,7 +26,7 @@ Includes prebuilt contract templates for:
 
 Contracts define required conditions, triggers, and verification checkpoints — but they **delegate verification** to the appropriate SMART modules.
 
-Trigger points include:
+Trigger points may include:
 
 - Job assignment
 - Pre-check completion

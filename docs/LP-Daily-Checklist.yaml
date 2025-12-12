@@ -1,0 +1,40 @@
+# SmartCompliance Contract
+# Generated from SOP for LP domain
+
+smart_contract_id: "LP-Daily-Checklist"
+contract_type: "SmartCompliance"
+created_date: "2025-12-10"
+domain: "LP"
+status: "draft"
+
+title: "Pre-Test Compliance Checklist"
+description: "Extracted from SOP"
+
+checklist_steps:
+  - step: 1
+    description: "Only personnel currently certified to Level II or Level III in Liquid Penetrant Testing in accordance with NAS-410 are authorized to perform, interpret, and accept/reject parts during Type I, Method A fluorescent penetrant inspection. Certification status is verified daily through the S.M.A.R.T. system and records shall be maintained on file before any inspection begins. Vision examinations (near vision Jaeger 1 or equivalent at 12-16 and color perception) are current and recorded. All training, examination, and experience, and certification records are maintained by the Quality Department and available for customer or regulatory review."
+    input_type: "checkbox"
+
+  - step: 2
+    description: "Risk Analysis"
+    input_type: "checkbox"
+
+  - step: 3
+    description: "BEFORE STARTING EVERY SHIFT"
+    input_type: "checkbox"
+
+  - step: 4
+    description: "All acceptance criteria of the Final Inspection Release Table shall be completed and in compliance with the appropriate acceptance criteria specification before any penetrant job per this process planning form can be issued a certificate of conformance (form QP-850-F1) for the customer. The acceptance criteria are derived from the specifications listed in Table 4. Any acceptance criteria that are not in compliance with the appropriate specification shall be handled per QP-8800 and a corrective action per QP-1010 shall be issued. When penetrant inspection is performed on the first piece of a new part number or after major process change, a First Article Inspection per AS9102 shall be completed prior to production release."
+    input_type: "checkbox"
+
+  - step: 5
+    description: "Revision History"
+    input_type: "checkbox"
+
+  - step: 6
+    description: "Approval Signatures"
+    input_type: "checkbox"
+
+  - step: 7
+    description: "Revision History"
+    input_type: "checkbox"

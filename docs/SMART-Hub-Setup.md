@@ -33,7 +33,7 @@ SMART-Hub is the **distributed orchestration network** of the SMART-ecosystem, s
 * Coordinates all central audit, compliance, ledger, and standards systems
 
 **🧩 Hosted Modules:**
-* SMART-ID (dual identity system for tech and human)
+* SMART-ID (identity system for human)
 * SMART-TokenAccessLayer (comprehensive multi-token governance)
 * SMART-ClientManager (operations-rooted CRM/CSM)
 * SMART-PeopleOps (HR infrastructure management)

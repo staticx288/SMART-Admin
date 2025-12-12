@@ -1,0 +1,9 @@
+# SMART-ContractEngine-Business Dependencies
+# Python packages required for SOP parsing and contract generation
+
+# Document parsing
+python-docx>=0.8.11    # For DOCX file parsing
+PyPDF2>=3.0.0         # For PDF file parsing
+
+# Optional but recommended
+pillow>=10.0.0        # For image handling if SOPs contain images

@@ -79,7 +79,7 @@ When a client PO is received (upload or manual entry):
    - 📜 `SmartStandard`
    - 🛡️ `SmartCompliance`
    - 🪪 `Tech Certification` (SMART-ID stored)
-   - ⚙️ `SmartMaintenance` (optional)
+   - ⚙️ `SmartMaintenance` 
    - 📌 **Set verification conditions for each linked contract**
      - Examples: `must-complete-before-test`, `require-acknowledgement`, `validate-limits-live`
 
