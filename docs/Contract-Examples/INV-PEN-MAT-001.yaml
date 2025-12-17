@@ -1,0 +1,35 @@
+smart_contract_id: INV-PEN-MAT-001
+contract_type: SmartInventory
+title: LP Consumables Inventory Readiness Contract
+description: Tracks presence, expiration, and usage of LP inspection consumables.
+created_date: '2025-09-01'
+checklist_steps:
+- step: 1
+  material: "Verify Cloth availability"
+  description: "Cloth"
+  specification: "AMS-3819"
+  input_type: checkbox
+- step: 2
+  material: "Verify Solvent Cleaner availability"
+  description: "Acetone"
+  specification: ASTM D329
+  input_type: checkbox
+- step: 3
+  material: "Verify Penetrant availability"
+  description: "ZP-60D Level II Penetrant"
+  specification: "QPL-AMS-2644"
+  input_type: checkbox
+- step: 4
+  material: "Verify Developer availability"
+  description: "ZP-9F Non-Aqueous"
+  specification: "QPL-AMS-2644"
+  input_type: checkbox
+- step: 5
+  material: "Verify Water availability"
+  description: "DI water"
+  specification: "ASTM D1193"
+  input_type: checkbox
+- step: 6
+  material: "Verify Cotton Swabs availability"
+  description: "Cotton Swabs"
+  input_type: checkbox

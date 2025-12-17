@@ -1,0 +1,16 @@
+smart_contract_id: SAFE-PEN-ENV-001
+contract_type: SmartSafety
+title: Penetrant Booth Environmental Safety Check
+description: Executes safety protocol verification before allowing LP process to begin.
+status: active
+created_date: '2025-09-01'
+checklist_steps:
+- step: 1
+  description: Confirm Eye-wash and safety shower tested this month
+  input_type: checkbox
+- step: 2
+  description: Verify Spill Kit and Class D fire extinguisher in place
+  input_type: checkbox
+- step: 3
+  description: Booth door closed or black curtains drawn down
+  input_type: checkbox

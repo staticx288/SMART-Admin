@@ -1,0 +1,56 @@
+[
+  {
+    "id": "mod_1765550388438_lf9z5fitw",
+    "moduleId": "smart_contractengine_business",
+    "name": "smart_contractengine_business",
+    "displayName": "SMART-Contractengine-Business",
+    "description": "Standalone Python module for converting business operations SOPs to SmartContracts.",
+    "modulePath": "D:\\SMART-Admin\\smart_business_module\\smart_contractengine_business",
+    "status": "deleted",
+    "lastScanned": "2025-12-12T14:42:50.133Z",
+    "metadata": {
+      "filesCount": 2,
+      "hasReadme": true,
+      "scannedAt": "2025-12-12T14:39:48.436Z",
+      "smartId": "MOD-91444",
+      "smartIdReady": true,
+      "moduleClassification": "Hub",
+      "categoryClassification": "General",
+      "validation": {
+        "path_exists": true,
+        "overall_status": "validated"
+      },
+      "validatedAt": "2025-12-12T14:42:50.133Z"
+    },
+    "createdAt": "2025-12-12T14:39:48.438Z",
+    "deprecatedAt": "2025-12-14T13:49:48.585Z",
+    "deprecationReason": "Manually deleted via UI"
+  },
+  {
+    "id": "mod_1765550389077_716fct0w6",
+    "moduleId": "smart_contractengine_production",
+    "name": "smart_contractengine_production",
+    "displayName": "SMART-Contractengine-Production",
+    "description": "Standalone Python module for converting production floor SOPs to SmartContracts.",
+    "modulePath": "D:\\SMART-Admin\\smart_business_module\\smart_contractengine_production",
+    "status": "deleted",
+    "lastScanned": "2025-12-12T14:43:03.770Z",
+    "metadata": {
+      "filesCount": 3,
+      "hasReadme": true,
+      "scannedAt": "2025-12-12T14:39:48.437Z",
+      "smartId": "MOD-72910",
+      "smartIdReady": true,
+      "moduleClassification": "Hub",
+      "categoryClassification": "General",
+      "validation": {
+        "path_exists": true,
+        "overall_status": "validated"
+      },
+      "validatedAt": "2025-12-12T14:43:03.770Z"
+    },
+    "createdAt": "2025-12-12T14:39:49.077Z",
+    "deprecatedAt": "2025-12-14T13:49:54.001Z",
+    "deprecationReason": "Manually deleted via UI"
+  }
+]

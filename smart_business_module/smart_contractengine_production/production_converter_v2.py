@@ -22,9 +22,7 @@ class ProductionConverterV2:
     
     # Supported domains
     DOMAINS = [
-        'LP', 'MPI', 'UT', 'RT', 'VT', 'WELD', 
-        'MACHINE', 'HEAT', 'CP', 'PAINT', 'POLISH', 
-        'ASSEMBLE', 'INSPECT'
+        'LP',  'WELD', 'CP', 'PAINT', 'CPLAB'
     ]
     
     # Contract types
@@ -35,7 +33,8 @@ class ProductionConverterV2:
         'SmartCompliance',
         'SmartSP',
         'SmartQA',
-        'SmartStandards'
+        'SmartStandards',
+        'SmartRisk'
     ]
     
     def __init__(self):

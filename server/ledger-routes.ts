@@ -303,19 +303,34 @@ export function setupLedgerRoutes(app: Express) {
       }
 
       // Use tab-specific recording functions
+      // Escape strings for Python to prevent syntax errors
+      const escapePythonString = (str: string) => {
+        return str
+          .replace(/\\/g, '\\\\')  // Escape backslashes first
+          .replace(/"/g, '\\"')    // Escape double quotes
+          .replace(/\n/g, '\\n')   // Escape newlines
+          .replace(/\r/g, '\\r')   // Escape carriage returns
+          .replace(/\t/g, '\\t');  // Escape tabs
+      };
+
       const scriptContent = `
 import sys
 import os
-sys.path.append('${__dirname}')
+# Force UTF-8 encoding for Windows compatibility
+import io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+
+sys.path.append('${__dirname.replace(/\\/g, '\\\\')}')
 from smart_ledger import record_${action_type}_action
 
 try:
     entry_id = record_${action_type}_action(
-        "${action}",
-        "${target}",
-        "${details}",
-        "${user_id}",
-        "${smart_id || ''}"
+        "${escapePythonString(action)}",
+        "${escapePythonString(target)}",
+        "${escapePythonString(details)}",
+        "${escapePythonString(user_id)}",
+        "${escapePythonString(smart_id || '')}"
     )
     print(f"SUCCESS:{entry_id}")
 except Exception as e:
@@ -448,7 +463,12 @@ except Exception as e:
 import sys
 import os
 import json
-sys.path.append('${__dirname}')
+# Force UTF-8 encoding for Windows compatibility
+import io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+
+sys.path.append('${__dirname.replace(/\\/g, '\\\\')}')
 from smart_ledger import get_all_recent_activities
 
 try:
@@ -545,7 +565,12 @@ except Exception as e:
 import sys
 import os
 import json
-sys.path.append('${__dirname}')
+# Force UTF-8 encoding for Windows compatibility
+import io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+
+sys.path.append('${__dirname.replace(/\\/g, '\\\\')}')
 from smart_ledger import get_ledger
 
 try:

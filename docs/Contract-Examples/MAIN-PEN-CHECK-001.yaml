@@ -9,19 +9,15 @@ checklist_steps:
   description: Confirm UV-A black light is on and warmed up
   input_type: checkbox
 - step: 2
-  description: "Measure and log UV light intensity (\u2265 1000 \xB5W/cm\xB2)"
+  description: "Measure UV intensity at 15 inches from part area"
   input_type: number
   unit: "\xB5W/cm\xB2"
+  reference_value: "Must greater than 1000 µW/cm²"
 - step: 3
-  description: Check white light in booth < 2 ftc
+  description: "Measure visible (white) light in booth with light meter"
   input_type: number
   unit: ftc
+  reference_value: "must be less than 2 foot-candles"
 - step: 4
-  description: "Ensure oven is at correct temp range (139\u2013159\xB0F)"
-  input_type: number
-  unit: "\xB0F"
-  reference_value: "139\u2013159"
-- step: 5
-  description: "Verify pressure gauge reads \u2265 40 psi during rinse"
-  input_type: number
-  unit: psi
+  description: "Ensure all materials present are listed in Table 1, clearly labeled, and within expiration. No materials shall be used if the shelf-life is expired"
+  input_type: checkbox

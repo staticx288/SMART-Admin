@@ -1,0 +1,19 @@
+smart_contract_id: PEN-SAFE-001
+contract_type: SmartSafety
+title: Penetrant Booth Safety Daily Pre-Check
+description: Ensure all PPE and safety infrastructure is in place before test
+status: active
+created_date: '2025-09-01'
+checklist_steps:
+- step: 1
+  description: Verify you are wearing chemical resistant nitrile gloves
+  input_type: checkbox
+- step: 2
+  description: Verifiy you are wearing safety glass with side shields
+  input_type: checkbox
+- step: 3
+  description: Verify UV-blocking face shield or goggles are on
+  input_type: checkbox
+- step: 4
+  description: Verify you are wearing long-sleeve lab coat
+  input_type: checkbox

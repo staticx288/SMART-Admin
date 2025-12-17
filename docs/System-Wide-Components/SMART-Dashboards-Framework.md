@@ -46,7 +46,7 @@ This is more than a dashboard. It’s dynamic infrastructure visibility, smart c
 
 ### 4. **Audit-Integrated Compliance Visibility**
 
-* Linked to SMART-AuditLogger and SMART-Compliance.
+* Linked to SMART-Ledger and SMART-Compliance.
 * Dashboards show test adherence, operator certs, missed checkpoints, and ledger timestamps.
 
 ---
@@ -66,6 +66,657 @@ This is more than a dashboard. It’s dynamic infrastructure visibility, smart c
 * Verifies process control visually without removing human decision input.
 * Enhances planning, tracking, and accountability.
 * Bridges testing, compliance, audit, finance, and client engagement in one stack.
+
+---
+
+## 📁 Architecture
+
+### Dashboard Configuration System
+
+**Storage**: YAML-based dashboard definitions  
+**Location**: `dashboard-configs/*.yaml`  
+**Backend**: Express + TypeScript + js-yaml  
+**Frontend**: React + TanStack Query + Radix UI  
+**Runtime**: Dynamic dashboard rendering from YAML
+
+### Core Components:
+
+* **Dashboard Loader** (`dashboard-routes.ts`) - API endpoints for YAML configs
+* **Dashboard Renderer** (`dashboard-renderer.tsx`) - React component for YAML-based rendering
+* **Widget Library** (`dashboard-widgets/`) - Reusable dashboard components
+* **Data Aggregator** (`dashboard-aggregator.py`) - Collects data from ledgers/broadcasts
+
+---
+
+## 📊 Dashboard YAML Configuration Examples
+
+### Testing Node Dashboard (SmartClientPO-Driven)
+
+```yaml
+# dashboard-configs/testing-node-dashboard.yaml
+dashboard_id: testing-node-primary
+dashboard_type: testing_node
+title: "Testing Station Dashboard"
+description: "SmartClientPO-driven test execution interface"
+
+# Visual configuration
+theme:
+  primary_color: "#1E90FF"  # steel-blue
+  background: "#141414"     # industrial-black
+  card_color: "#6B7280"     # gray-600
+  text_color: "#FFFFFF"
+
+layout:
+  type: single_column
+  max_width: 1400px
+  spacing: medium
+
+# Dashboard sections
+sections:
+  - section_id: active_clientpo
+    title: "Active Client PO"
+    widget: clientpo_display
+    position: top
+    config:
+      show_part_details: true
+      show_test_requirements: true
+      show_delivery_date: true
+      auto_refresh: true
+      refresh_interval: 5000  # ms
+
+  - section_id: pre_checks
+    title: "Pre-Test Verification"
+    widget: checklist_display
+    position: top_secondary
+    config:
+      contract_type: pre_check
+      show_operator_cert: true
+      show_equipment_cal: true
+      require_all_complete: true
+      lock_tests_until_complete: true
+
+  - section_id: test_execution
+    title: "Required Tests"
+    widget: test_list_progressive
+    position: main
+    config:
+      reveal_mode: progressive  # Reveal tests as pre-checks complete
+      show_test_order: true
+      highlight_current_test: true
+      show_completion_status: true
+      show_operator_assignment: true
+
+  - section_id: live_alerts
+    title: "Safety & Alerts"
+    widget: alert_monitor
+    position: sidebar
+    config:
+      alert_types: [safety, equipment, environmental]
+      severity_levels: [critical, high, medium]
+      auto_acknowledge: false
+      sound_alerts: true
+
+  - section_id: completion_summary
+    title: "Session Summary"
+    widget: completion_report
+    position: bottom
+    config:
+      show_test_count: true
+      show_duration: true
+      show_operator_signatures: true
+      show_audit_hash: true
+
+# Data sources
+data_sources:
+  - source: handoff_central
+    endpoint: /api/active-clientpo
+    refresh: 5000
+  
+  - source: smart_ledger
+    endpoint: /api/ledger/recent
+    filter: testing_events
+    refresh: 3000
+  
+  - source: alert_broadcast
+    endpoint: ws://floor-hub:8080/alerts
+    type: websocket
+
+# Access control
+access:
+  required_role: operator
+  require_smart_id: true
+  allowed_smart_ids: ["USR-*", "NODE-*"]
+  require_certification: true
+  cert_types: ["NDT Level 2", "AWS CWI"]
+
+# Behavior
+behavior:
+  auto_load_clientpo: true
+  lock_after_completion: true
+  require_signature: true
+  audit_trail: true
+  offline_mode: false
+```
+
+### BusinessOps Executive Dashboard
+
+```yaml
+# dashboard-configs/business-ops-executive.yaml
+dashboard_id: business-ops-executive
+dashboard_type: business_ops
+title: "Business Operations Dashboard"
+description: "Multi-view facility operations and strategy"
+
+theme:
+  primary_color: "#1E90FF"
+  background: "#141414"
+  card_color: "#6B7280"
+  text_color: "#FFFFFF"
+
+layout:
+  type: grid
+  columns: 3
+  rows: auto
+  gap: 20px
+
+sections:
+  - section_id: active_jobs
+    title: "Active Client POs"
+    widget: clientpo_overview
+    grid_position: {col: 1, row: 1, span_col: 2, span_row: 1}
+    config:
+      show_count: true
+      show_progress: true
+      show_expected_completion: true
+      group_by: priority
+
+  - section_id: facility_health
+    title: "Facility Status"
+    widget: health_monitor
+    grid_position: {col: 3, row: 1, span_col: 1, span_row: 2}
+    config:
+      show_node_status: true
+      show_equipment_status: true
+      show_personnel_count: true
+      show_safety_status: true
+
+  - section_id: revenue_tracking
+    title: "Revenue & Contract Performance"
+    widget: financial_summary
+    grid_position: {col: 1, row: 2, span_col: 1, span_row: 1}
+    config:
+      show_completed_contracts: true
+      show_revenue_ytd: true
+      show_cost_centers: true
+      show_roi_heatmap: true
+
+  - section_id: compliance_status
+    title: "Compliance & Audit"
+    widget: compliance_overview
+    grid_position: {col: 2, row: 2, span_col: 1, span_row: 1}
+    config:
+      show_cert_expiry: true
+      show_audit_flags: true
+      show_test_adherence: true
+      show_recent_violations: true
+
+  - section_id: ai_insights
+    title: "AI-Driven Insights"
+    widget: ai_recommendations
+    grid_position: {col: 1, row: 3, span_col: 3, span_row: 1}
+    config:
+      show_bottleneck_analysis: true
+      show_optimization_suggestions: true
+      show_predictive_maintenance: true
+      show_staffing_recommendations: true
+
+data_sources:
+  - source: smart_ledger
+    endpoint: /api/ledger/aggregate
+    filter: all_events
+    refresh: 10000
+  
+  - source: compliance_hub
+    endpoint: /api/compliance/status
+    refresh: 30000
+  
+  - source: ai_engine
+    endpoint: /api/ai/insights
+    refresh: 60000
+
+access:
+  required_role: executive
+  require_smart_id: true
+  allowed_smart_ids: ["USR-EXEC-*", "USR-MGR-*"]
+```
+
+### Client Transparency Dashboard
+
+```yaml
+# dashboard-configs/client-portal-dashboard.yaml
+dashboard_id: client-portal-primary
+dashboard_type: client_portal
+title: "Client Project Dashboard"
+description: "Real-time project tracking and transparency"
+
+theme:
+  primary_color: "#1E90FF"
+  background: "#141414"
+  card_color: "#6B7280"
+  text_color: "#FFFFFF"
+  accent_color: "#10B981"  # Green for completed items
+
+layout:
+  type: single_column
+  max_width: 1200px
+  spacing: large
+
+sections:
+  - section_id: project_overview
+    title: "Your Project Status"
+    widget: project_summary
+    position: top
+    config:
+      show_po_number: true
+      show_part_details: true
+      show_delivery_date: true
+      show_overall_progress: true
+      show_estimated_completion: true
+
+  - section_id: test_progress
+    title: "Test Completion Status"
+    widget: test_progress_tracker
+    position: main
+    config:
+      show_test_list: true
+      show_completion_percentage: true
+      show_operator_info: false  # Privacy
+      show_timestamps: true
+      show_pass_fail: true
+      hide_incomplete_details: true  # Don't show what hasn't started
+
+  - section_id: documents
+    title: "Project Documents"
+    widget: document_library
+    position: main_secondary
+    config:
+      show_reports: true
+      show_certificates: true
+      show_images: true
+      allow_download: true
+      require_signature: true  # Client must sign to download
+
+  - section_id: messaging
+    title: "Questions & Updates"
+    widget: messaging_panel
+    position: sidebar
+    config:
+      enable_client_messages: true
+      show_project_updates: true
+      show_read_receipts: true
+      notification_email: true
+
+  - section_id: delivery_tracking
+    title: "Delivery & Handoff"
+    widget: delivery_status
+    position: bottom
+    config:
+      show_packaging_status: true
+      show_shipping_info: true
+      show_tracking_number: true
+      show_delivery_confirmation: true
+
+data_sources:
+  - source: smart_ledger
+    endpoint: /api/ledger/client/{client_id}
+    filter: client_visible_events
+    refresh: 15000
+  
+  - source: handoff_central
+    endpoint: /api/clientpo/{po_id}/status
+    refresh: 10000
+  
+  - source: document_vault
+    endpoint: /api/documents/{client_id}
+    refresh: 30000
+
+access:
+  required_role: client
+  require_smart_id: true
+  allowed_smart_ids: ["CLIENT-{client_id}"]
+  data_isolation: true  # Only see own data
+  audit_all_access: true
+```
+
+---
+
+## 🔧 Backend API Implementation
+
+### Dashboard Configuration Loader
+
+```typescript
+// server/dashboard-routes.ts
+import express from "express";
+import fs from "fs";
+import path from "path";
+import yaml from "js-yaml";
+
+const router = express.Router();
+const dashboardConfigsDir = path.join(__dirname, "../dashboard-configs");
+
+// Get all dashboard configurations
+router.get("/api/dashboards", async (req, res) => {
+  try {
+    const files = fs.readdirSync(dashboardConfigsDir)
+      .filter(f => f.endsWith(".yaml"));
+    
+    const dashboards = files.map(file => {
+      const filePath = path.join(dashboardConfigsDir, file);
+      const config = yaml.load(fs.readFileSync(filePath, "utf8"));
+      return config;
+    });
+    
+    res.json(dashboards);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to load dashboards" });
+  }
+});
+
+// Get specific dashboard configuration
+router.get("/api/dashboards/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const filePath = path.join(dashboardConfigsDir, `${id}.yaml`);
+    
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: "Dashboard not found" });
+    }
+    
+    const config = yaml.load(fs.readFileSync(filePath, "utf8"));
+    res.json(config);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to load dashboard" });
+  }
+});
+
+// Get dashboard data from multiple sources
+router.get("/api/dashboards/:id/data", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const configPath = path.join(dashboardConfigsDir, `${id}.yaml`);
+    const config = yaml.load(fs.readFileSync(configPath, "utf8"));
+    
+    // Aggregate data from all configured sources
+    const data = {};
+    
+    for (const source of config.data_sources) {
+      try {
+        const sourceData = await fetchDataSource(source);
+        data[source.source] = sourceData;
+      } catch (err) {
+        data[source.source] = { error: err.message };
+      }
+    }
+    
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to aggregate dashboard data" });
+  }
+});
+
+async function fetchDataSource(source: any): Promise<any> {
+  // Implementation would fetch from ledger, broadcasts, etc.
+  // This is a placeholder showing the pattern
+  switch (source.source) {
+    case "smart_ledger":
+      return await fetchLedgerData(source.filter);
+    case "handoff_central":
+      return await fetchHandoffData();
+    case "alert_broadcast":
+      return await fetchAlerts(source.type);
+    default:
+      throw new Error(`Unknown source: ${source.source}`);
+  }
+}
+
+export default router;
+```
+
+### Dashboard Data Aggregator (Python)
+
+```python
+# server/dashboard_aggregator.py
+"""
+Dashboard Data Aggregator
+Collects data from various SMART modules and prepares for dashboard consumption
+Does NOT write to ledger - only reads and aggregates data
+"""
+
+from server.smart_ledger import get_ledger
+from datetime import datetime, timezone
+import json
+from pathlib import Path
+
+class DashboardAggregator:
+    def __init__(self, floor_hub_id: str):
+        self.floor_hub_id = floor_hub_id
+        self.ledger = get_ledger("dashboard_aggregator")
+        self.cache = {}
+        self.cache_ttl = 5000  # milliseconds
+    
+    def get_testing_node_data(self, node_id: str) -> dict:
+        """
+        Aggregate data for testing node dashboard
+        Returns data from HandoffCentral, ledger, and alerts
+        """
+        data = {
+            "node_id": node_id,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "active_clientpo": self._get_active_clientpo(node_id),
+            "pre_checks": self._get_pre_check_status(node_id),
+            "test_list": self._get_required_tests(node_id),
+            "recent_alerts": self._get_recent_alerts(node_id),
+            "session_summary": self._get_session_summary(node_id)
+        }
+        
+        return data
+    
+    def get_business_ops_data(self) -> dict:
+        """
+        Aggregate facility-wide operations data
+        Returns comprehensive business intelligence
+        """
+        data = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "active_jobs": self._get_all_active_clientpos(),
+            "facility_health": self._get_facility_status(),
+            "revenue_tracking": self._get_financial_summary(),
+            "compliance_status": self._get_compliance_overview(),
+            "ai_insights": self._get_ai_recommendations()
+        }
+        
+        return data
+    
+    def get_client_portal_data(self, client_id: str, po_id: str) -> dict:
+        """
+        Aggregate client-visible data for transparency dashboard
+        Filters sensitive information before returning
+        """
+        data = {
+            "client_id": client_id,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "project_overview": self._get_client_project_overview(po_id),
+            "test_progress": self._get_client_test_progress(po_id),
+            "documents": self._get_client_documents(client_id, po_id),
+            "messages": self._get_client_messages(client_id),
+            "delivery_tracking": self._get_delivery_status(po_id)
+        }
+        
+        # Filter sensitive data
+        data = self._filter_sensitive_data(data)
+        
+        return data
+    
+    def _get_active_clientpo(self, node_id: str) -> dict:
+        """Retrieve active ClientPO from HandoffCentral"""
+        # Implementation would query HandoffCentral module
+        return {}
+    
+    def _get_pre_check_status(self, node_id: str) -> dict:
+        """Get pre-check completion status from ledger"""
+        # Query ledger for pre-check events
+        ledger_entries = self._query_ledger({
+            "action_type": "testing",
+            "action": "pre_check_complete",
+            "target": node_id
+        })
+        
+        return {
+            "total_checks": len(ledger_entries),
+            "completed": sum(1 for e in ledger_entries if e.get("status") == "complete"),
+            "checks": ledger_entries
+        }
+    
+    def _get_required_tests(self, node_id: str) -> list:
+        """Build test list from active ClientPO"""
+        # Would parse ClientPO requirements
+        return []
+    
+    def _get_recent_alerts(self, node_id: str) -> list:
+        """Get recent safety/equipment alerts"""
+        return []
+    
+    def _filter_sensitive_data(self, data: dict) -> dict:
+        """Remove operator names, equipment details, internal notes"""
+        # Implementation would strip sensitive fields
+        return data
+    
+    def _query_ledger(self, filters: dict) -> list:
+        """Query ledger with filters - read-only operation"""
+        # Implementation would search ledger files
+        return []
+```
+
+---
+
+## 🎨 Frontend Dashboard Renderer
+
+### React Component Pattern
+
+```typescript
+// client/src/components/dashboard-renderer.tsx
+import { useQuery } from "@tanstack/react-query";
+import { Card } from "@/components/ui/card";
+
+interface DashboardConfig {
+  dashboard_id: string;
+  dashboard_type: string;
+  title: string;
+  theme: {
+    primary_color: string;
+    background: string;
+    card_color: string;
+    text_color: string;
+  };
+  layout: {
+    type: string;
+    max_width?: string;
+    columns?: number;
+  };
+  sections: DashboardSection[];
+  data_sources: DataSource[];
+}
+
+interface DashboardSection {
+  section_id: string;
+  title: string;
+  widget: string;
+  position?: string;
+  grid_position?: any;
+  config: any;
+}
+
+export function DashboardRenderer({ dashboardId }: { dashboardId: string }) {
+  // Load dashboard configuration from YAML
+  const { data: config, isLoading: configLoading } = useQuery({
+    queryKey: ["dashboard-config", dashboardId],
+    queryFn: async () => {
+      const response = await fetch(`/api/dashboards/${dashboardId}`);
+      return response.json() as Promise<DashboardConfig>;
+    },
+  });
+
+  // Load dashboard data
+  const { data: dashboardData, isLoading: dataLoading } = useQuery({
+    queryKey: ["dashboard-data", dashboardId],
+    queryFn: async () => {
+      const response = await fetch(`/api/dashboards/${dashboardId}/data`);
+      return response.json();
+    },
+    refetchInterval: config?.data_sources[0]?.refresh || 5000,
+  });
+
+  if (configLoading || dataLoading) {
+    return <div>Loading dashboard...</div>;
+  }
+
+  if (!config) {
+    return <div>Dashboard not found</div>;
+  }
+
+  // Apply theme from YAML config
+  const themeStyles = {
+    "--primary": config.theme.primary_color,
+    "--background": config.theme.background,
+    "--card": config.theme.card_color,
+    "--foreground": config.theme.text_color,
+  } as React.CSSProperties;
+
+  return (
+    <div className="dashboard-container" style={themeStyles}>
+      <h1 className="dashboard-title">{config.title}</h1>
+      
+      <div className={`dashboard-layout layout-${config.layout.type}`}>
+        {config.sections.map((section) => (
+          <DashboardSection
+            key={section.section_id}
+            section={section}
+            data={dashboardData?.[section.section_id]}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DashboardSection({ section, data }: { section: DashboardSection; data: any }) {
+  // Render appropriate widget based on section.widget
+  const Widget = getWidgetComponent(section.widget);
+  
+  return (
+    <Card className="dashboard-section">
+      <h2>{section.title}</h2>
+      <Widget config={section.config} data={data} />
+    </Card>
+  );
+}
+
+function getWidgetComponent(widgetType: string) {
+  // Map widget types to React components
+  const widgetMap = {
+    clientpo_display: ClientPODisplay,
+    checklist_display: ChecklistDisplay,
+    test_list_progressive: TestListProgressive,
+    alert_monitor: AlertMonitor,
+    completion_report: CompletionReport,
+    health_monitor: HealthMonitor,
+    financial_summary: FinancialSummary,
+    // ... more widgets
+  };
+  
+  return widgetMap[widgetType] || DefaultWidget;
+}
+```
 
 ---
 

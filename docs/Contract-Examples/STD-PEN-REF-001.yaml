@@ -1,0 +1,13 @@
+smart_contract_id: STD-PEN-REF-001
+contract_type: SmartStandards
+title: Penetrant Standards Presence Validation
+description: Verifies presence of required standards before LP inspection begins.
+status: active
+created_date: '2025-09-01'
+checklist_steps:
+- step: 1
+  description: Confirm STD-LP-1417 is present and readable in local standards folder
+  input_type: checkbox
+- step: 2
+  description: Trigger SMART-Ledger validation entry on file presence
+  input_type: checkbox

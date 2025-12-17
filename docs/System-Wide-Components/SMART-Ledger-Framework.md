@@ -17,13 +17,51 @@ This design follows a distributed ledger model, where **every module maintains i
 ### ✅ Every Module Writes Its Own Ledger
 
 * Each module (e.g., Compliance, Handoff, Dashboard, Audit, etc.) maintains a self-contained ledger.
+* **Modules DO NOT write directly to ledger files** - they call the SMART-Ledger API
+* **SMART-Ledger module handles all writing** - file I/O, hash calculation, and chain validation
+* Modules only report WHAT to log, the Ledger decides HOW to log it
 * Ledger entries are:
 
-  * Timestamped
+  * Timestamped (by SMART-Ledger)
   * Signed with **Module SMART-ID** and **Domain SMART-ID**
-  * Hash-linked to the previous entry
-  * Sealed after each write
+  * Hash-linked to the previous entry (by SMART-Ledger)
+  * Sealed after each write (by SMART-Ledger)
 * No ledger can be altered without detection due to hash chaining.
+
+### 📝 Module-to-Ledger Communication Pattern
+
+**Modules use SMART-Ledger API:**
+
+```python
+# Module reports action to SMART-Ledger
+from server.smart_ledger import get_ledger
+
+# Get ledger instance for this module
+ledger = get_ledger("handoff_central")
+
+# Tell ledger WHAT to log (module doesn't do the writing)
+ledger.record_action(
+    action_type="handoff",
+    action="stage_client_po",
+    target="SC-2025-001-LP",
+    details="SmartClientPO staged, awaiting part arrival",
+    user_id="system",
+    smart_id="HUB-FLOOR-001",
+    metadata={"staging_id": "STAGE-12345", "part_id": "PART-ABC"}
+)
+
+# SMART-Ledger handles:
+# - Hash calculation
+# - Timestamp generation
+# - File writing to JSONL
+# - Chain validation
+# - Index updates
+```
+
+**Separation of Concerns:**
+* **Module's Job**: Report what happened (action, target, details, context)
+* **Ledger's Job**: Write it immutably (hashing, chaining, file I/O, validation)
+* This ensures consistent logging format and prevents modules from corrupting ledger integrity
 
 ### 🗂️ Types of Logged Events
 

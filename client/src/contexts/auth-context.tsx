@@ -39,13 +39,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   const checkAuth = async () => {
+    console.log('🔐 Starting auth check...');
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.log('⏰ Auth check timeout - aborting...');
+        controller.abort();
+      }, 5000); // 5 second timeout
+      
+      console.log('📡 Fetching /api/auth/me...');
       const response = await fetch('/api/auth/me', {
         credentials: 'include',
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId);
+      console.log('✅ Auth response received:', response.status);
       
       if (response.ok) {
         const data = await response.json();
+        console.log('📦 Auth data:', data);
         if (data.authenticated) {
           setUser(data.user);
         } else {
@@ -55,9 +68,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(null);
       }
     } catch (error) {
-      console.error('Auth check failed:', error);
+      console.error('❌ Auth check failed:', error);
       setUser(null);
     } finally {
+      console.log('🏁 Auth check complete, setting isLoading to false');
       setIsLoading(false);
     }
   };

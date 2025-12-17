@@ -14,7 +14,6 @@ The SMART-Audit system is a **centralized monitoring and alerting architecture**
 - **Alert Generation**: Sends targeted alerts via SMART-AlertBroadcast when issues are detected
 - **Insight Dashboards**: Provides enterprise-wide audit visibility and trend analysis
 - **Compliance Reporting**: Generates CAPs, client audit reports, and certification packs
-- **Manual Override Tracking**: Monitors exceptional workflows with full ledger trail analysis
 
 ### AlertBroadcast Integration
 

@@ -1,8 +1,8 @@
-# 🏛 SMART-StandardsNodeEnforcer Framework
+# 🏛 SMART-StandardsNodeVerifier Framework
 
 **Enforce the Standard. Nothing More. Nothing Less.**
 
-SMART-StandardsNodeEnforcer ensures that all operations at the station level align strictly with required **industry**, **client**, or **internal standards**. It is not responsible for interpreting test logic, compliance procedures, or quality enforcement. Its only job is to validate that the correct **standard file is present and intact**, and to log that fact permanently.
+SMART-StandardsNodeVerifier ensures that all operations at the station level align strictly with required **industry**, **client**, or **internal standards**. It is not responsible for interpreting test logic, compliance procedures, or quality enforcement. Its only job is to validate that the correct **standard file is present and intact**, and to log that fact permanently.
 
 ---
 
@@ -43,7 +43,7 @@ SMART-StandardsNodeEnforcer ensures that all operations at the station level ali
 ## 📝 Sample Ledger Entry
 ```json
 {
-  "module": "SMART-StandardsNodeEnforcer",
+  "module": "SMART-StandardsNodeVerifier",
   "station": "CP-01",
   "standard": "STD-CP-A.yaml",
   "status": "Standard Validation Passed",
@@ -74,6 +74,6 @@ SMART-StandardsNodeEnforcer ensures that all operations at the station level ali
 
 ## 📋 Closing Statement
 
-**SMART-StandardsNodeEnforcer enforces only one thing: the presence of the correct standard file at the correct station.**  
+**SMART-StandardsNodeVerifier enforces only one thing: the presence of the correct standard file at the correct station.**  
 If the standard isn’t there, the job doesn’t run.  
 **No standard? No execution. No exceptions.**

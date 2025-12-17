@@ -8,12 +8,38 @@ import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import { spawn } from 'child_process';
+import { spawn, spawnSync } from 'child_process';
 import fs from 'fs/promises';
 import { requireAuth } from './auth';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Detect Python command (Windows uses 'python', Linux uses 'python3')
+function findPythonExecutable(): string {
+  // Windows: Use specific Python 3.14 path if it exists
+  const windowsPython = 'C:/Users/blroy/AppData/Local/Programs/Python/Python314-32/python.exe';
+  try {
+    const res = spawnSync(windowsPython, ['--version'], { stdio: 'ignore' });
+    if (res.status === 0) return windowsPython;
+  } catch {}
+
+  // Try python3 first (Linux/Mac)
+  try {
+    const res = spawnSync('python3', ['--version'], { stdio: 'ignore' });
+    if (res.status === 0) return 'python3';
+  } catch {}
+
+  // Try python (Windows fallback)
+  try {
+    const res = spawnSync('python', ['--version'], { stdio: 'ignore' });
+    if (res.status === 0) return 'python';
+  } catch {}
+
+  return 'python3'; // fallback
+}
+
+const PYTHON_CMD = findPythonExecutable();
 
 const router = Router();
 
@@ -205,7 +231,7 @@ print(json.dumps(result))
       await fs.appendFile(logFile, `${new Date().toISOString()}: 📝 Wrapper script:\n${wrapperScript}\n\n`).catch(() => {});
 
       // Spawn Python process with script file
-      const python = spawn('python3', [scriptPath]);
+      const python = spawn(PYTHON_CMD, [scriptPath]);
       
       let stdout = '';
       let stderr = '';

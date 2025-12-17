@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/auth-context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -175,6 +176,7 @@ export default function ConfigurableEquipmentManager() {
   const [deleteConfirmEquipment, setDeleteConfirmEquipment] = useState<Equipment | null>(null);
 
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   // Load equipment settings from server/storage
   const { data: settings, isLoading: settingsLoading } = useQuery({
@@ -299,7 +301,32 @@ export default function ConfigurableEquipmentManager() {
         throw new Error(errorData.error || "Failed to create equipment");
       }
       
-      return response.json();
+      const result = await response.json();
+      
+      // Record to ledger - MUST succeed
+      if (!user?.username) {
+        throw new Error('User authentication required for ledger recording');
+      }
+      
+      const ledgerResponse = await fetch("/api/ledger/record", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tab: "equipment",
+          action_type: "equipment",
+          action: "register",
+          target: data.name,
+          details: `Registered ${data.category} equipment: ${data.name}`,
+          smart_id: result.id || '',
+          user_id: user.username
+        })
+      });
+      
+      if (!ledgerResponse.ok) {
+        throw new Error('Ledger recording failed - operation incomplete');
+      }
+      
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/equipment", "v2"] });
@@ -331,8 +358,33 @@ export default function ConfigurableEquipmentManager() {
         const errorData = await response.json();
         throw new Error(errorData.error || "Failed to update equipment");
       }
+
+      const result = await response.json();
       
-      return response.json();
+      // Record to ledger - MUST succeed
+      if (!user?.username) {
+        throw new Error('User authentication required for ledger recording');
+      }
+      
+      const ledgerResponse = await fetch("/api/ledger/record", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tab: "equipment",
+          action_type: "equipment",
+          action: "update",
+          target: data.name,
+          details: `Updated ${data.category} equipment: ${data.name}`,
+          smart_id: id,
+          user_id: user.username
+        })
+      });
+      
+      if (!ledgerResponse.ok) {
+        throw new Error('Ledger recording failed - operation incomplete');
+      }
+      
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/equipment", "v2"] });
@@ -354,7 +406,7 @@ export default function ConfigurableEquipmentManager() {
   });
 
   const deleteEquipment = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, equipment }: { id: string; equipment: Equipment }) => {
       const response = await fetch(`/api/equipment/${id}`, {
         method: "DELETE",
       });
@@ -363,8 +415,33 @@ export default function ConfigurableEquipmentManager() {
         const errorData = await response.json();
         throw new Error(errorData.error || "Failed to delete equipment");
       }
+
+      const result = await response.json();
       
-      return response.json();
+      // Record to ledger - MUST succeed
+      if (!user?.username) {
+        throw new Error('User authentication required for ledger recording');
+      }
+      
+      const ledgerResponse = await fetch("/api/ledger/record", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tab: "equipment",
+          action_type: "equipment",
+          action: "delete",
+          target: equipment.name,
+          details: `Deleted ${equipment.category} equipment: ${equipment.name}`,
+          smart_id: id,
+          user_id: user.username
+        })
+      });
+      
+      if (!ledgerResponse.ok) {
+        throw new Error('Ledger recording failed - data integrity compromised');
+      }
+      
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/equipment"] });
@@ -539,7 +616,10 @@ export default function ConfigurableEquipmentManager() {
   const handleDeleteEquipment = () => {
     if (!deleteConfirmEquipment) return;
     
-    deleteEquipment.mutate(deleteConfirmEquipment.id);
+    deleteEquipment.mutate({ 
+      id: deleteConfirmEquipment.id, 
+      equipment: deleteConfirmEquipment 
+    });
     setDeleteConfirmEquipment(null);
   };
 

@@ -190,24 +190,9 @@ function setupDiscoveryServer(httpPort: number) {
       else if (message.type === 'smart_agent_broadcast') {
         const agentIP = message.ip || rinfo.address;
         
-        // Validate required fields - reject invalid broadcasts
+        // Validate required fields - reject incomplete broadcasts
         if (!message.hostname) {
           log(`❌ Rejected agent broadcast from ${agentIP}: missing hostname`);
-          return;
-        }
-        
-        if (!message.system_info?.os) {
-          log(`❌ Rejected agent broadcast from ${agentIP}: missing OS info`);
-          return;
-        }
-        
-        if (!message.system_info?.platform) {
-          log(`❌ Rejected agent broadcast from ${agentIP}: missing platform info`);
-          return;
-        }
-        
-        if (!message.system_info?.architecture) {
-          log(`❌ Rejected agent broadcast from ${agentIP}: missing architecture info`);
           return;
         }
         
@@ -221,20 +206,35 @@ function setupDiscoveryServer(httpPort: number) {
           return;
         }
         
-        if (!message.resources) {
-          log(`❌ Rejected agent broadcast from ${agentIP}: missing resource information`);
+        if (!message.capabilities || message.capabilities.length === 0) {
+          log(`❌ Rejected agent broadcast from ${agentIP}: missing capabilities`);
           return;
         }
         
-        // Store agent broadcast for discovery
-        const agentKey = `${agentIP}:${message.port || 22}`;
+        if (!message.device_type) {
+          log(`❌ Rejected agent broadcast from ${agentIP}: missing device_type`);
+          return;
+        }
+        
+        if (!message.resources) {
+          log(`❌ Rejected agent broadcast from ${agentIP}: missing resources`);
+          return;
+        }
+        
+        if (!message.system_info) {
+          log(`❌ Rejected agent broadcast from ${agentIP}: missing system_info`);
+          return;
+        }
+        
+        // Store agent broadcast for discovery - all required fields validated
+        const agentKey = `${agentIP}:${message.port || message.ssh_port || 22}`;
         discoveredAgents.set(agentKey, {
           ip: agentIP,
           hostname: message.hostname,
           port: message.port || message.ssh_port || 22,
           ssh_port: message.ssh_port || 22,
-          capabilities: message.capabilities || [],
-          device_type: message.device_type || 'edge_device',
+          capabilities: message.capabilities,
+          device_type: message.device_type,
           resources: message.resources,
           system_info: message.system_info,
           device_info: message.system_info,
@@ -266,9 +266,11 @@ function setupDiscoveryServer(httpPort: number) {
         }
         
         // Log with resource info
-        const resourceInfo = `${message.resources.cpu_cores}c/${message.resources.memory_gb}GB RAM`;
+        const resourceInfo = message.resources ? 
+          `${message.resources.cpu_cores}c/${message.resources.memory_gb}GB RAM` : 
+          'unknown resources';
         
-        log(`📻 Agent broadcast from ${message.hostname} (${agentIP}) - ${resourceInfo}`);
+        log(`📻 Agent broadcast from ${message.hostname || 'Unknown'} (${agentIP}) - ${resourceInfo}`);
       }
     } catch (error) {
       log(`Error parsing discovery message: ${error}`);
@@ -423,17 +425,23 @@ async function setupModuleScanner() {
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
+  const currentEnv = app.get("env");
+  console.log(`🌍 Current environment: "${currentEnv}" (NODE_ENV: "${process.env.NODE_ENV}")`);
+  
+  if (currentEnv === "development") {
+    console.log('🔧 Starting Vite dev server setup...');
     await setupVite(app, server);
+    console.log('✅ Vite dev server setup complete');
   } else {
+    console.log('📦 Using static file serving (production mode)');
     serveStatic(app);
   }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5001 if not specified.
+  // Other ports are firewalled. Default to 3000 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '5001', 10);
+  const port = parseInt(process.env.PORT || '3000', 10);
   
   // Setup UDP discovery server
   const udpServer = setupDiscoveryServer(port);
